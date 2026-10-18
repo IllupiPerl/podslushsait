@@ -4,7 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Подслушано Школа</title>
-  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <!-- async не дает сайту зависать, если домен telegram.org заблокирован у провайдера -->
+  <script src="https://telegram.org/js/telegram-web-app.js" async></script>
   <style>
     * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
     body { margin: 0; padding: 14px; background: #f0f2f5; color: #222; }
@@ -13,10 +14,10 @@
     .badge { padding: 4px 8px; border-radius: 6px; font-weight: 600; font-size: 12px; }
     .badge.user { background: #eef2f7; color: #555; }
     .badge.admin { background: #fff3cd; color: #856404; }
-    .admin-login-btn { background: none; border: 1px dashed #2481cc; color: #2481cc; border-radius: 6px; padding: 3px 8px; font-size: 12px; cursor: pointer; }
+    .admin-login-btn { background: none; border: 1px dashed #2481cc; color: #2481cc; border-radius: 6px; padding: 4px 8px; font-size: 12px; cursor: pointer; }
 
     .tabs { display: flex; gap: 8px; margin-bottom: 14px; }
-    .tab { flex: 1; padding: 10px; border: none; border-radius: 10px; background: #dfe3e8; font-weight: 600; font-size: 14px; cursor: pointer; transition: 0.2s; }
+    .tab { flex: 1; padding: 10px; border: none; border-radius: 10px; background: #dfe3e8; font-weight: 600; font-size: 14px; cursor: pointer; }
     .tab.active { background: #2481cc; color: #fff; }
 
     .card { background: #fff; padding: 14px; border-radius: 12px; margin-bottom: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.05); }
@@ -44,31 +45,31 @@
 </head>
 <body>
 
-  <!-- Верхняя панель с ID и статусом роли -->
+  <!-- Верхняя панель -->
   <div class="top-bar">
     <div>
-      <div id="userName" style="font-weight: 600;">👤 Загрузка...</div>
-      <div id="userIdText" style="color: #777; font-size: 11px; margin-top: 2px;">ID: ...</div>
+      <div id="userName" style="font-weight: 600;">👤 Ученик</div>
+      <div id="userIdText" style="color: #777; font-size: 11px; margin-top: 2px;">ID: загрузка...</div>
     </div>
-    <div style=" display: flex; align-items: center; gap: 6px;">
+    <div style="display: flex; align-items: center; gap: 6px;">
       <span id="roleBadge" class="badge user">Ученик</span>
       <button id="adminLoginBtn" class="admin-login-btn" onclick="toggleAdminBox()">🔑 Админ</button>
     </div>
   </div>
 
-  <!-- Быстрый вход для админа по паролю -->
+  <!-- Вход для админа по паролю -->
   <div id="adminPassBox" class="card hidden">
-    <div style="font-size: 13px; font-weight: 600; margin-bottom: 6px;">Введите пароль модератора:</div>
+    <div style="font-size: 13px; font-weight: 600; margin-bottom: 6px;">Пароль администратора (по умолчанию 12345):</div>
     <div style="display: flex; gap: 8px;">
-      <input type="password" id="adminPassInput" class="input-field" style="margin-top:0;" placeholder="Пароль...">
+      <input type="password" id="adminPassInput" class="input-field" style="margin-top:0;" placeholder="Введите пароль...">
       <button class="btn" style="width: auto; padding: 8px 16px;" onclick="unlockAdmin()">Войти</button>
     </div>
   </div>
 
-  <!-- Блок для вывода уведомлений и ошибок -->
+  <!-- Уведомления -->
   <div id="notifyBox" class="msg-box"></div>
 
-  <!-- Вкладки навигации -->
+  <!-- Вкладки -->
   <div class="tabs">
     <button class="tab active" id="btn-create" onclick="switchTab('create')">Написать</button>
     <button class="tab" id="btn-history" onclick="switchTab('history')">Мои посты</button>
@@ -97,27 +98,47 @@
   <script>
     // ================= НАСТРОЙКИ =================
     const SUPABASE_URL = 'ВАШ_SUPABASE_URL'; // Например: https://xxxx.supabase.co
-    const SUPABASE_KEY = 'ВАШ_SUPABASE_KEY'; // Публичный ключ anon / publishable
+    const SUPABASE_KEY = 'ВАШ_SUPABASE_KEY'; // Публичный ключ (anon / public)
     const BOT_TOKEN    = 'ВАШ_ТОКЕН_БОТА';   // Токен из @BotFather
     const CHANNEL_ID   = '@ваш_канал';       // Юзернейм канала с @ или ID (-100...)
     
-    const ADMIN_IDS    = [123456789];        // Ваш Telegram ID (цифрами без кавычек)
-    const ADMIN_PASS   = '12345';            // Пароль, чтобы войти в админку прямо с телефона
+    const ADMIN_IDS    = [123456789];        // Ваш Telegram ID
+    const ADMIN_PASS   = '12345';            // Пароль для кнопки "🔑 Админ"
     // =============================================
 
-    const tg = window.Telegram?.WebApp;
-    if (tg) { tg.ready(); tg.expand(); }
+    // Генерируем постоянный ID для браузера, если открыто вне Telegram
+    let savedLocalId = localStorage.getItem('local_user_id');
+    if (!savedLocalId) {
+      savedLocalId = Math.floor(100000 + Math.random() * 900000);
+      localStorage.setItem('local_user_id', savedLocalId);
+    }
 
-    // Определяем пользователя Telegram
-    const user = tg?.initDataUnsafe?.user || { id: 111111, first_name: 'Гость', username: '' };
-    const displayName = user.username ? '@' + user.username : (user.first_name || 'Ученик');
+    let user = { id: Number(savedLocalId), first_name: 'Ученик', username: '' };
+    let displayName = 'Ученик';
+    let isAdmin = localStorage.getItem('is_mod') === 'true';
 
-    document.getElementById('userName').innerText = '👤 ' + displayName;
-    document.getElementById('userIdText').innerText = 'Ваш ID: ' + user.id;
+    // Подхватываем данные Telegram, как только скрипт подгрузится
+    function initTelegramUser() {
+      const tg = window.Telegram?.WebApp;
+      if (tg) {
+        tg.ready();
+        tg.expand();
+        if (tg.initDataUnsafe?.user) {
+          user = tg.initDataUnsafe.user;
+        }
+      }
+      displayName = user.username ? '@' + user.username : (user.first_name || 'Ученик');
+      document.getElementById('userName').innerText = '👤 ' + displayName;
+      document.getElementById('userIdText').innerText = 'Ваш ID: ' + user.id;
 
-    // Проверка прав администратора (по ID или сохраненному входу)
-    let isAdmin = ADMIN_IDS.map(String).includes(String(user.id)) || localStorage.getItem('is_mod') === 'true';
-    updateAdminUI();
+      if (ADMIN_IDS.map(String).includes(String(user.id))) {
+        isAdmin = true;
+      }
+      updateAdminUI();
+    }
+
+    initTelegramUser();
+    setTimeout(initTelegramUser, 800);
 
     function updateAdminUI() {
       if (isAdmin) {
@@ -139,9 +160,9 @@
         isAdmin = true;
         localStorage.setItem('is_mod', 'true');
         updateAdminUI();
-        showMessage('✅ Вы вошли как администратор! Открыта вкладка «Модерация».', 'success');
+        showMessage('✅ Вы вошли как администратор! Появилась вкладка «Модерация».', 'success');
       } else {
-        showMessage('❌ Неверный пароль администратора', 'error');
+        showMessage('❌ Неверный пароль!', 'error');
       }
     }
 
@@ -149,18 +170,39 @@
       const box = document.getElementById('notifyBox');
       box.innerText = text;
       box.className = 'msg-box ' + type;
-      setTimeout(() => { if (type === 'success') box.className = 'msg-box'; }, 5000);
+      if (type === 'success') {
+        setTimeout(() => { box.className = 'msg-box'; }, 5000);
+      }
     }
 
-    // Универсальная функция прямого запроса к Supabase (без внешних библиотек)
+    // Быстрый fetch с таймаутом 4 секунды (чтобы ничего не зависало)
+    async function fetchWithTimeout(url, options = {}, timeout = 4500) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), timeout);
+      try {
+        const res = await fetch(url, { ...options, signal: controller.signal });
+        clearTimeout(timer);
+        return res;
+      } catch (e) {
+        clearTimeout(timer);
+        throw e;
+      }
+    }
+
+    // Запрос к Supabase
     async function supabaseRequest(path, method = 'GET', body = null) {
-      const cleanUrl = SUPABASE_URL.replace(/\/$/, '');
+      if (SUPABASE_URL.includes('ВАШ_')) {
+        throw new Error('Вы забыли вставить свой SUPABASE_URL и SUPABASE_KEY внизу кода!');
+      }
+      const cleanUrl = SUPABASE_URL.trim().replace(/\/$/, '');
+      const cleanKey = SUPABASE_KEY.trim();
+
       const headers = {
-        'apikey': SUPABASE_KEY,
+        'apikey': cleanKey,
         'Content-Type': 'application/json'
       };
-      if (SUPABASE_KEY.startsWith('eyJ')) {
-        headers['Authorization'] = 'Bearer ' + SUPABASE_KEY;
+      if (cleanKey.startsWith('eyJ')) {
+        headers['Authorization'] = 'Bearer ' + cleanKey;
       }
       if (method !== 'GET') {
         headers['Prefer'] = 'return=representation';
@@ -169,7 +211,16 @@
       const options = { method, headers };
       if (body) options.body = JSON.stringify(body);
 
-      const res = await fetch(`${cleanUrl}/rest/v1/${path}`, options);
+      const targetUrl = `${cleanUrl}/rest/v1/${path}`;
+      let res;
+      try {
+        res = await fetchWithTimeout(targetUrl, options, 5000);
+      } catch (err) {
+        // Если провайдер блокирует Supabase, пробуем через прокси
+        const proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(targetUrl);
+        res = await fetchWithTimeout(proxyUrl, options, 7000);
+      }
+
       const text = await res.text();
       let data = null;
       try { data = text ? JSON.parse(text) : null; } catch (e) {}
@@ -180,7 +231,6 @@
       return data;
     }
 
-    // Переключение вкладок
     function switchTab(tab) {
       ['create', 'history', 'mod'].forEach(t => {
         document.getElementById('tab-' + t).classList.add('hidden');
@@ -193,7 +243,7 @@
       if (tab === 'mod') loadModQueue();
     }
 
-    // 1. Отправка сообщения
+    // 1. Отправка поста
     async function submitPost() {
       const content = document.getElementById('postContent').value.trim();
       const isAnon = document.getElementById('isAnon').checked;
@@ -222,7 +272,7 @@
       }
     }
 
-    // 2. История постов пользователя
+    // 2. История постов
     async function loadHistory() {
       const container = document.getElementById('historyList');
       container.innerHTML = '<div class="card">Загрузка...</div>';
@@ -248,7 +298,7 @@
           </div>
         `).join('');
       } catch (err) {
-        container.innerHTML = `<div class="card" style="color:#c0392b;">Ошибка загрузки: ${err.message}</div>`;
+        container.innerHTML = `<div class="card" style="color:#c0392b;">Ошибка: ${err.message}</div>`;
       }
     }
 
@@ -265,7 +315,7 @@
         }
 
         container.innerHTML = data.map(post => `
-          <div class="card" id="post-card-${post.id}">
+          <div class="card">
             <div style="font-size:12px; color:#666; margin-bottom:6px;">
               Автор: <b>${post.is_anon ? '🕶 Анонимно' : escapeHtml(post.user_name)}</b> (ID: ${post.user_id})
             </div>
@@ -282,7 +332,7 @@
       }
     }
 
-    // 4. Одобрение и отправка в Telegram-канал
+    // 4. Одобрение + отправка в ТГ-канал (с обходом блокировки api.telegram.org)
     async function approvePost(postId) {
       try {
         const rows = await supabaseRequest(`posts?id=eq.${postId}`);
@@ -292,22 +342,32 @@
         const prefix = post.is_anon ? '🕶 Анонимно:' : `📢 От ${post.user_name}:`;
         const textForChannel = `${prefix}\n\n${post.content}`;
 
-        const tgRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+        const tgUrl = `https://api.telegram.org/bot${BOT_TOKEN.trim()}/sendMessage`;
+        const tgOptions = {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ chat_id: CHANNEL_ID, text: textForChannel })
-        });
-        const tgData = await tgRes.json();
+          body: JSON.stringify({ chat_id: CHANNEL_ID.trim(), text: textForChannel })
+        };
 
+        let tgRes;
+        try {
+          tgRes = await fetchWithTimeout(tgUrl, tgOptions, 3500);
+        } catch (e) {
+          // Если api.telegram.org заблокирован провайдером, шлем через прокси
+          const proxyTgUrl = 'https://corsproxy.io/?' + encodeURIComponent(tgUrl);
+          tgRes = await fetchWithTimeout(proxyTgUrl, tgOptions, 6000);
+        }
+
+        const tgData = await tgRes.json();
         if (!tgData.ok) {
-          return showMessage('❌ Ошибка Telegram: ' + tgData.description + ' (Проверьте, что бот добавлен в админы канала)', 'error');
+          return showMessage('❌ Ошибка Telegram: ' + tgData.description, 'error');
         }
 
         await supabaseRequest(`posts?id=eq.${postId}`, 'PATCH', { status: 'approved' });
         showMessage('✅ Пост опубликован в канале!', 'success');
         loadModQueue();
       } catch (err) {
-        showMessage('❌ Ошибка: ' + err.message, 'error');
+        showMessage('❌ Ошибка публикации: ' + err.message, 'error');
       }
     }
 
