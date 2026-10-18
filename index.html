@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Подслушано Школа</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { margin: 0; padding: 16px; background: #f4f4f9; color: #222; }
+    .header { font-size: 13px; color: #666; margin-bottom: 12px; display: flex; justify-content: space-between; }
+    .tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+    .tab { flex: 1; padding: 10px; border: none; border-radius: 10px; background: #e0e0e8; font-weight: 600; cursor: pointer; }
+    .tab.active { background: #2481cc; color: #fff; }
+    .card { background: #fff; padding: 14px; border-radius: 12px; margin-bottom: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.05); }
+    textarea { width: 100%; height: 110px; padding: 10px; border: 1px solid #ccc; border-radius: 8px; resize: none; font-size: 15px; }
+    .checkbox-row { display: flex; align-items: center; gap: 8px; margin: 12px 0; font-size: 14px; }
+    .btn { width: 100%; padding: 12px; border: none; border-radius: 10px; background: #2481cc; color: white; font-size: 15px; font-weight: 600; cursor: pointer; }
+    .btn-row { display: flex; gap: 8px; margin-top: 10px; }
+    .btn-approve { background: #2ecc71; }
+    .btn-reject { background: #e74c3c; }
+    .status { display: inline-block; padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; margin-bottom: 8px; }
+    .status.pending { background: #fff3cd; color: #856404; }
+    .status.approved { background: #d4edda; color: #155724; }
+    .status.rejected { background: #f8d7da; color: #721c24; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <span id="userName">Загрузка...</span>
+    <span id="userIdBadge"></span>
+  </div>
+
+  <!-- Навигация -->
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('create')">Написать</button>
+    <button class="tab" onclick="switchTab('history')">Мои посты</button>
+    <button class="tab hidden" id="modTabBtn" onclick="switchTab('mod')">Модерация</button>
+  </div>
+
+  <!-- Экран 1: Предложить пост -->
+  <div id="tab-create" class="card">
+    <textarea id="postContent" placeholder="Напишите сообщение в Подслушано..."></textarea>
+    <label class="checkbox-row">
+      <input type="checkbox" id="isAnon" checked> Опубликовать анонимно
+    </label>
+    <button class="btn" onclick="submitPost()">Отправить на проверку</button>
+  </div>
+
+  <!-- Экран 2: История сообщений пользователя -->
+  <div id="tab-history" class="hidden">
+    <div id="historyList">Загрузка...</div>
+  </div>
+
+  <!-- Экран 3: Панель модератора -->
+  <div id="tab-mod" class="hidden">
+    <div id="modList">Загрузка...</div>
+  </div>
+
+  <script>
+    // ================= НАСТРОЙКИ =================
+    const SUPABASE_URL = 'sb_publishable_rtqASvDfYbVuk5mGIXqYeg_2c3aIjRQ';
+    const SUPABASE_KEY = 'sb_secret_-oblPII6OtrnRW0d1H-tnA_qCCuH8U5';
+    const BOT_TOKEN    = '8536024615:AAEaJN6xmgJ0YLVRUZHE6SH5wuuK1OttulY';
+    const CHANNEL_ID   = '@goldakochgola'; // Например: '@school_podslushano'
+    const ADMIN_IDS    = [1389964621]; // Впишите сюда свой Telegram ID через запятую
+    // =============================================
+
+    const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const tg = window.Telegram.WebApp;
+    tg.expand();
+
+    // Получаем аккаунт пользователя из Telegram (или тестовый при открытии в браузере)
+    const user = tg.initDataUnsafe?.user || { id: 111111, first_name: 'Тест', username: 'test_user' };
+    const displayName = user.username ? '@' + user.username : user.first_name;
+
+    document.getElementById('userName').innerText = '👤 ' + displayName;
+    document.getElementById('userIdBadge').innerText = 'Ваш ID: ' + user.id;
+
+    // Если пользователь в списке админов — показываем вкладку Модерация
+    if (ADMIN_IDS.includes(user.id)) {
+      document.getElementById('modTabBtn').classList.remove('hidden');
+    }
+
+    function switchTab(tab) {
+      ['create', 'history', 'mod'].forEach(t => {
+        document.getElementById('tab-' + t).classList.add('hidden');
+      });
+      document.querySelectorAll('.tab').forEach(btn => btn.classList.remove('active'));
+      
+      document.getElementById('tab-' + tab).classList.remove('hidden');
+      event.target.classList.add('active');
+
+      if (tab === 'history') loadHistory();
+      if (tab === 'mod') loadModQueue();
+    }
+
+    // 1. Отправка поста
+    async function submitPost() {
+      const content = document.getElementById('postContent').value.trim();
+      const isAnon = document.getElementById('isAnon').checked;
+      if (!content) return alert('Введите текст сообщения!');
+
+      const { error } = await db.from('posts').insert({
+        user_id: user.id,
+        user_name: displayName,
+        content: content,
+        is_anon: isAnon,
+        status: 'pending'
+      });
+
+      if (error) return alert('Ошибка: ' + error.message);
+      document.getElementById('postContent').value = '';
+      alert('Сообщение отправлено модераторам!');
+    }
+
+    // 2. Загрузка личной истории
+    async function loadHistory() {
+      const container = document.getElementById('historyList');
+      container.innerHTML = 'Загрузка...';
+
+      const { data, error } = await db.from('posts')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (!data || data.length === 0) {
+        container.innerHTML = '<div class="card">Вы еще ничего не отправляли.</div>';
+        return;
+      }
+
+      const statusLabels = {
+        pending: '🟡 На рассмотрении',
+        approved: '🟢 Одобрено и опубликовано',
+        rejected: '🔴 Отклонено'
+      };
+
+      container.innerHTML = data.map(post => `
+        <div class="card">
+          <div class="status ${post.status}">${statusLabels[post.status]}</div>
+          <div>${post.content}</div>
+          ${post.reject_reason ? `<div style="margin-top:8px; font-size:13px; color:#c0392b;">Причина: ${post.reject_reason}</div>` : ''}
+        </div>
+      `).join('');
+    }
+
+    // 3. Загрузка очереди модерации
+    async function loadModQueue() {
+      const container = document.getElementById('modList');
+      container.innerHTML = 'Загрузка...';
+
+      const { data } = await db.from('posts')
+        .select('*')
+        .eq('status', 'pending')
+        .order('created_at', { ascending: true });
+
+      if (!data || data.length === 0) {
+        container.innerHTML = '<div class="card">Нет новых сообщений на проверку 🎉</div>';
+        return;
+      }
+
+      container.innerHTML = data.map(post => `
+        <div class="card">
+          <div style="font-size:12px; color:#666; margin-bottom:6px;">
+            Автор: ${post.is_anon ? '🕶 Анонимно' : post.user_name} (ID: ${post.user_id})
+          </div>
+          <div style="font-size:15px; margin-bottom:10px;">${post.content}</div>
+          <div class="btn-row">
+            <button class="btn btn-approve" onclick="approvePost(${post.id})">✅ Одобрить</button>
+            <button class="btn btn-reject" onclick="rejectPost(${post.id})">❌ Отказать</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // 4. Одобрение + автопостинг в Telegram-канал
+    async function approvePost(postId) {
+      const { data: post } = await db.from('posts').select('*').eq('id', postId).single();
+      if (!post) return;
+
+      const prefix = post.is_anon ? '🕶 Анонимно:' : `📢 От ${post.user_name}:`;
+      const textForChannel = `${prefix}\n\n${post.content}`;
+
+      // Отправляем пост в ТГ-канал через Bot API
+      const tgResponse = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id: CHANNEL_ID, text: textForChannel })
+      });
+
+      const tgResult = await tgResponse.json();
+      if (!tgResult.ok) {
+        return alert('Ошибка отправки в канал: ' + tgResult.description);
+      }
+
+      // Меняем статус в базе на Одобрено
+      await db.from('posts').update({ status: 'approved' }).eq('id', postId);
+      loadModQueue();
+    }
+
+    // 5. Отклонение поста
+    async function rejectPost(postId) {
+      const reason = prompt('Укажите причину отказа (необязательно):') || 'Не прошло модерацию';
+      await db.from('posts').update({ status: 'rejected', reject_reason: reason }).eq('id', postId);
+      loadModQueue();
+    }
+  </script>
+</body>
+</html>
