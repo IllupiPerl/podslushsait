@@ -1,396 +1,118 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Подслушано Школа</title>
-  <!-- async не дает сайту зависать, если домен telegram.org заблокирован у провайдера -->
-  <script src="https://telegram.org/js/telegram-web-app.js" async></script>
-  <style>
-    * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-    body { margin: 0; padding: 14px; background: #f0f2f5; color: #222; }
-    
-    .top-bar { background: #fff; padding: 10px 14px; border-radius: 12px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; font-size: 13px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
-    .badge { padding: 4px 8px; border-radius: 6px; font-weight: 600; font-size: 12px; }
-    .badge.user { background: #eef2f7; color: #555; }
-    .badge.admin { background: #fff3cd; color: #856404; }
-    .admin-login-btn { background: none; border: 1px dashed #2481cc; color: #2481cc; border-radius: 6px; padding: 4px 8px; font-size: 12px; cursor: pointer; }
-
-    .tabs { display: flex; gap: 8px; margin-bottom: 14px; }
-    .tab { flex: 1; padding: 10px; border: none; border-radius: 10px; background: #dfe3e8; font-weight: 600; font-size: 14px; cursor: pointer; }
-    .tab.active { background: #2481cc; color: #fff; }
-
-    .card { background: #fff; padding: 14px; border-radius: 12px; margin-bottom: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.05); }
-    textarea { width: 100%; height: 110px; padding: 10px; border: 1px solid #d0d5dd; border-radius: 8px; resize: none; font-size: 15px; outline: none; }
-    textarea:focus { border-color: #2481cc; }
-    .input-field { width: 100%; padding: 8px 10px; border: 1px solid #d0d5dd; border-radius: 8px; font-size: 14px; margin-top: 8px; }
-    
-    .checkbox-row { display: flex; align-items: center; gap: 8px; margin: 12px 0; font-size: 14px; cursor: pointer; }
-    .btn { width: 100%; padding: 12px; border: none; border-radius: 10px; background: #2481cc; color: white; font-size: 15px; font-weight: 600; cursor: pointer; }
-    .btn:disabled { opacity: 0.6; }
-    .btn-row { display: flex; gap: 8px; margin-top: 10px; }
-    .btn-approve { background: #2ecc71; }
-    .btn-reject { background: #e74c3c; }
-
-    .msg-box { padding: 10px 12px; border-radius: 8px; font-size: 13px; font-weight: 500; margin-bottom: 12px; display: none; word-break: break-word; }
-    .msg-box.success { display: block; background: #d4edda; color: #155724; }
-    .msg-box.error { display: block; background: #f8d7da; color: #721c24; }
-
-    .status { display: inline-block; padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; margin-bottom: 8px; }
-    .status.pending { background: #fff3cd; color: #856404; }
-    .status.approved { background: #d4edda; color: #155724; }
-    .status.rejected { background: #f8d7da; color: #721c24; }
-    .hidden { display: none !important; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Подслушка 21 школы</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        :root {
+            --bg-color: var(--tg-theme-bg-color, #ffffff);
+            --text-color: var(--tg-theme-text-color, #222222);
+            --btn-color: var(--tg-theme-button-color, #3390ec);
+            --btn-text: var(--tg-theme-button-text-color, #ffffff);
+            --sec-bg: var(--tg-theme-secondary-bg-color, #f4f4f5);
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 16px;
+        }
+        .card {
+            background: var(--sec-bg);
+            border-radius: 14px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+        h2 { margin-top: 0; font-size: 20px; }
+        textarea {
+            width: 100%;
+            min-height: 130px;
+            border: 1px solid rgba(128, 128, 128, 0.25);
+            border-radius: 10px;
+            padding: 12px;
+            background: var(--bg-color);
+            color: var(--text-color);
+            font-size: 15px;
+            resize: none;
+            box-sizing: border-box;
+            outline: none;
+        }
+        .toggle-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin: 14px 0;
+            font-size: 15px;
+        }
+        button {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 12px;
+            background-color: var(--btn-color);
+            color: var(--btn-text);
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        #admin-box { display: none; border: 1px solid var(--btn-color); }
+    </style>
 </head>
 <body>
 
-  <!-- Верхняя панель -->
-  <div class="top-bar">
-    <div>
-      <div id="userName" style="font-weight: 600;">👤 Ученик</div>
-      <div id="userIdText" style="color: #777; font-size: 11px; margin-top: 2px;">ID: загрузка...</div>
+    <h2>🤫 Подслушка 21 школы</h2>
+
+    <div class="card">
+        <textarea id="post-text" placeholder="Напиши свою историю, сплетню или вопрос..."></textarea>
+        <div class="toggle-row">
+            <label for="anon-check">Опубликовать анонимно 🕵️</label>
+            <input type="checkbox" id="anon-check" checked style="transform: scale(1.3);">
+        </div>
+        <button onclick="sendPost()">Отправить в предложку</button>
     </div>
-    <div style="display: flex; align-items: center; gap: 6px;">
-      <span id="roleBadge" class="badge user">Ученик</span>
-      <button id="adminLoginBtn" class="admin-login-btn" onclick="toggleAdminBox()">🔑 Админ</button>
+
+    <!-- Секретная панель для админа (включается, если открыть ссылку с ?admin=1) -->
+    <div class="card" id="admin-box">
+        <h3 style="margin-top:0; font-size:16px;">📢 Рассылка всем (Админ)</h3>
+        <textarea id="bc-text" placeholder="Текст рассылки для всех пользователей..." style="min-height: 80px;"></textarea>
+        <button onclick="sendBroadcast()" style="margin-top: 10px;">Отправить всем</button>
     </div>
-  </div>
 
-  <!-- Вход для админа по паролю -->
-  <div id="adminPassBox" class="card hidden">
-    <div style="font-size: 13px; font-weight: 600; margin-bottom: 6px;">Пароль администратора (по умолчанию 12345):</div>
-    <div style="display: flex; gap: 8px;">
-      <input type="password" id="adminPassInput" class="input-field" style="margin-top:0;" placeholder="Введите пароль...">
-      <button class="btn" style="width: auto; padding: 8px 16px;" onclick="unlockAdmin()">Войти</button>
-    </div>
-  </div>
-
-  <!-- Уведомления -->
-  <div id="notifyBox" class="msg-box"></div>
-
-  <!-- Вкладки -->
-  <div class="tabs">
-    <button class="tab active" id="btn-create" onclick="switchTab('create')">Написать</button>
-    <button class="tab" id="btn-history" onclick="switchTab('history')">Мои посты</button>
-    <button class="tab hidden" id="btn-mod" onclick="switchTab('mod')">Модерация</button>
-  </div>
-
-  <!-- Вкладка 1: Предложить пост -->
-  <div id="tab-create" class="card">
-    <textarea id="postContent" placeholder="Напишите ваше сообщение в Подслушано..."></textarea>
-    <label class="checkbox-row">
-      <input type="checkbox" id="isAnon" checked> Опубликовать анонимно
-    </label>
-    <button class="btn" id="sendBtn" onclick="submitPost()">Отправить на проверку</button>
-  </div>
-
-  <!-- Вкладка 2: История -->
-  <div id="tab-history" class="hidden">
-    <div id="historyList">Загрузка...</div>
-  </div>
-
-  <!-- Вкладка 3: Модерация -->
-  <div id="tab-mod" class="hidden">
-    <div id="modList">Загрузка...</div>
-  </div>
-
-  <script>
-    // ================= НАСТРОЙКИ =================
-    const SUPABASE_URL = 'ВАШ_SUPABASE_URL'; // Например: https://xxxx.supabase.co
-    const SUPABASE_KEY = 'ВАШ_SUPABASE_KEY'; // Публичный ключ (anon / public)
-    const BOT_TOKEN    = 'ВАШ_ТОКЕН_БОТА';   // Токен из @BotFather
-    const CHANNEL_ID   = '@ваш_канал';       // Юзернейм канала с @ или ID (-100...)
-    
-    const ADMIN_IDS    = [123456789];        // Ваш Telegram ID
-    const ADMIN_PASS   = '12345';            // Пароль для кнопки "🔑 Админ"
-    // =============================================
-
-    // Генерируем постоянный ID для браузера, если открыто вне Telegram
-    let savedLocalId = localStorage.getItem('local_user_id');
-    if (!savedLocalId) {
-      savedLocalId = Math.floor(100000 + Math.random() * 900000);
-      localStorage.setItem('local_user_id', savedLocalId);
-    }
-
-    let user = { id: Number(savedLocalId), first_name: 'Ученик', username: '' };
-    let displayName = 'Ученик';
-    let isAdmin = localStorage.getItem('is_mod') === 'true';
-
-    // Подхватываем данные Telegram, как только скрипт подгрузится
-    function initTelegramUser() {
-      const tg = window.Telegram?.WebApp;
-      if (tg) {
-        tg.ready();
+    <script>
+        const tg = window.Telegram.WebApp;
         tg.expand();
-        if (tg.initDataUnsafe?.user) {
-          user = tg.initDataUnsafe.user;
-        }
-      }
-      displayName = user.username ? '@' + user.username : (user.first_name || 'Ученик');
-      document.getElementById('userName').innerText = '👤 ' + displayName;
-      document.getElementById('userIdText').innerText = 'Ваш ID: ' + user.id;
 
-      if (ADMIN_IDS.map(String).includes(String(user.id))) {
-        isAdmin = true;
-      }
-      updateAdminUI();
-    }
-
-    initTelegramUser();
-    setTimeout(initTelegramUser, 800);
-
-    function updateAdminUI() {
-      if (isAdmin) {
-        document.getElementById('roleBadge').innerText = '👑 Админ';
-        document.getElementById('roleBadge').className = 'badge admin';
-        document.getElementById('btn-mod').classList.remove('hidden');
-        document.getElementById('adminLoginBtn').classList.add('hidden');
-        document.getElementById('adminPassBox').classList.add('hidden');
-      }
-    }
-
-    function toggleAdminBox() {
-      document.getElementById('adminPassBox').classList.toggle('hidden');
-    }
-
-    function unlockAdmin() {
-      const val = document.getElementById('adminPassInput').value.trim();
-      if (val === ADMIN_PASS) {
-        isAdmin = true;
-        localStorage.setItem('is_mod', 'true');
-        updateAdminUI();
-        showMessage('✅ Вы вошли как администратор! Появилась вкладка «Модерация».', 'success');
-      } else {
-        showMessage('❌ Неверный пароль!', 'error');
-      }
-    }
-
-    function showMessage(text, type = 'success') {
-      const box = document.getElementById('notifyBox');
-      box.innerText = text;
-      box.className = 'msg-box ' + type;
-      if (type === 'success') {
-        setTimeout(() => { box.className = 'msg-box'; }, 5000);
-      }
-    }
-
-    // Быстрый fetch с таймаутом 4 секунды (чтобы ничего не зависало)
-    async function fetchWithTimeout(url, options = {}, timeout = 4500) {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), timeout);
-      try {
-        const res = await fetch(url, { ...options, signal: controller.signal });
-        clearTimeout(timer);
-        return res;
-      } catch (e) {
-        clearTimeout(timer);
-        throw e;
-      }
-    }
-
-    // Запрос к Supabase
-    async function supabaseRequest(path, method = 'GET', body = null) {
-      if (SUPABASE_URL.includes('ВАШ_')) {
-        throw new Error('Вы забыли вставить свой SUPABASE_URL и SUPABASE_KEY внизу кода!');
-      }
-      const cleanUrl = SUPABASE_URL.trim().replace(/\/$/, '');
-      const cleanKey = SUPABASE_KEY.trim();
-
-      const headers = {
-        'apikey': cleanKey,
-        'Content-Type': 'application/json'
-      };
-      if (cleanKey.startsWith('eyJ')) {
-        headers['Authorization'] = 'Bearer ' + cleanKey;
-      }
-      if (method !== 'GET') {
-        headers['Prefer'] = 'return=representation';
-      }
-
-      const options = { method, headers };
-      if (body) options.body = JSON.stringify(body);
-
-      const targetUrl = `${cleanUrl}/rest/v1/${path}`;
-      let res;
-      try {
-        res = await fetchWithTimeout(targetUrl, options, 5000);
-      } catch (err) {
-        // Если провайдер блокирует Supabase, пробуем через прокси
-        const proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(targetUrl);
-        res = await fetchWithTimeout(proxyUrl, options, 7000);
-      }
-
-      const text = await res.text();
-      let data = null;
-      try { data = text ? JSON.parse(text) : null; } catch (e) {}
-
-      if (!res.ok) {
-        throw new Error(data?.message || data?.error || `Ошибка базы (${res.status})`);
-      }
-      return data;
-    }
-
-    function switchTab(tab) {
-      ['create', 'history', 'mod'].forEach(t => {
-        document.getElementById('tab-' + t).classList.add('hidden');
-        document.getElementById('btn-' + t).classList.remove('active');
-      });
-      document.getElementById('tab-' + tab).classList.remove('hidden');
-      document.getElementById('btn-' + tab).classList.add('active');
-
-      if (tab === 'history') loadHistory();
-      if (tab === 'mod') loadModQueue();
-    }
-
-    // 1. Отправка поста
-    async function submitPost() {
-      const content = document.getElementById('postContent').value.trim();
-      const isAnon = document.getElementById('isAnon').checked;
-      const btn = document.getElementById('sendBtn');
-
-      if (!content) return showMessage('Напишите текст сообщения!', 'error');
-
-      btn.disabled = true;
-      btn.innerText = 'Отправка...';
-
-      try {
-        await supabaseRequest('posts', 'POST', {
-          user_id: user.id,
-          user_name: displayName,
-          content: content,
-          is_anon: isAnon,
-          status: 'pending'
-        });
-        document.getElementById('postContent').value = '';
-        showMessage('✅ Сообщение отправлено на проверку модераторам!', 'success');
-      } catch (err) {
-        showMessage('❌ Ошибка отправки: ' + err.message, 'error');
-      } finally {
-        btn.disabled = false;
-        btn.innerText = 'Отправить на проверку';
-      }
-    }
-
-    // 2. История постов
-    async function loadHistory() {
-      const container = document.getElementById('historyList');
-      container.innerHTML = '<div class="card">Загрузка...</div>';
-
-      try {
-        const data = await supabaseRequest(`posts?user_id=eq.${user.id}&order=created_at.desc`);
-        if (!data || data.length === 0) {
-          container.innerHTML = '<div class="card">Вы еще ничего не отправляли.</div>';
-          return;
+        // Если в ссылке есть ?admin=1, показываем блок рассылки
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('admin') === '1') {
+            document.getElementById('admin-box').style.display = 'block';
         }
 
-        const statusLabels = {
-          pending: '🟡 На рассмотрении',
-          approved: '🟢 Одобрено и опубликовано',
-          rejected: '🔴 Отклонено'
-        };
+        function sendPost() {
+            const text = document.getElementById('post-text').value.trim();
+            const isAnon = document.getElementById('anon-check').checked;
+            if (!text) return tg.showAlert("Введите текст записи!");
 
-        container.innerHTML = data.map(post => `
-          <div class="card">
-            <div class="status ${post.status}">${statusLabels[post.status] || post.status}</div>
-            <div style="white-space: pre-wrap;">${escapeHtml(post.content)}</div>
-            ${post.reject_reason ? `<div style="margin-top:8px; font-size:13px; color:#c0392b;">Причина отказа: ${escapeHtml(post.reject_reason)}</div>` : ''}
-          </div>
-        `).join('');
-      } catch (err) {
-        container.innerHTML = `<div class="card" style="color:#c0392b;">Ошибка: ${err.message}</div>`;
-      }
-    }
-
-    // 3. Очередь модерации
-    async function loadModQueue() {
-      const container = document.getElementById('modList');
-      container.innerHTML = '<div class="card">Загрузка очереди...</div>';
-
-      try {
-        const data = await supabaseRequest('posts?status=eq.pending&order=created_at.asc');
-        if (!data || data.length === 0) {
-          container.innerHTML = '<div class="card">Нет новых сообщений на проверку 🎉</div>';
-          return;
+            // Отправляем данные напрямую боту через Telegram без всяких серверов!
+            tg.sendData(JSON.stringify({
+                action: "submit",
+                text: text,
+                is_anon: isAnon
+            }));
         }
 
-        container.innerHTML = data.map(post => `
-          <div class="card">
-            <div style="font-size:12px; color:#666; margin-bottom:6px;">
-              Автор: <b>${post.is_anon ? '🕶 Анонимно' : escapeHtml(post.user_name)}</b> (ID: ${post.user_id})
-            </div>
-            <div style="font-size:15px; margin-bottom:10px; white-space: pre-wrap;">${escapeHtml(post.content)}</div>
-            <input type="text" id="reason-${post.id}" class="input-field" placeholder="Причина отказа (если отклоняете)...">
-            <div class="btn-row">
-              <button class="btn btn-approve" onclick="approvePost(${post.id})">✅ В канал</button>
-              <button class="btn btn-reject" onclick="rejectPost(${post.id})">❌ Отказать</button>
-            </div>
-          </div>
-        `).join('');
-      } catch (err) {
-        container.innerHTML = `<div class="card" style="color:#c0392b;">Ошибка: ${err.message}</div>`;
-      }
-    }
+        function sendBroadcast() {
+            const text = document.getElementById('bc-text').value.trim();
+            if (!text) return tg.showAlert("Введите текст рассылки!");
 
-    // 4. Одобрение + отправка в ТГ-канал (с обходом блокировки api.telegram.org)
-    async function approvePost(postId) {
-      try {
-        const rows = await supabaseRequest(`posts?id=eq.${postId}`);
-        const post = rows?.[0];
-        if (!post) return;
-
-        const prefix = post.is_anon ? '🕶 Анонимно:' : `📢 От ${post.user_name}:`;
-        const textForChannel = `${prefix}\n\n${post.content}`;
-
-        const tgUrl = `https://api.telegram.org/bot${BOT_TOKEN.trim()}/sendMessage`;
-        const tgOptions = {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ chat_id: CHANNEL_ID.trim(), text: textForChannel })
-        };
-
-        let tgRes;
-        try {
-          tgRes = await fetchWithTimeout(tgUrl, tgOptions, 3500);
-        } catch (e) {
-          // Если api.telegram.org заблокирован провайдером, шлем через прокси
-          const proxyTgUrl = 'https://corsproxy.io/?' + encodeURIComponent(tgUrl);
-          tgRes = await fetchWithTimeout(proxyTgUrl, tgOptions, 6000);
+            tg.sendData(JSON.stringify({
+                action: "broadcast",
+                text: text
+            }));
         }
-
-        const tgData = await tgRes.json();
-        if (!tgData.ok) {
-          return showMessage('❌ Ошибка Telegram: ' + tgData.description, 'error');
-        }
-
-        await supabaseRequest(`posts?id=eq.${postId}`, 'PATCH', { status: 'approved' });
-        showMessage('✅ Пост опубликован в канале!', 'success');
-        loadModQueue();
-      } catch (err) {
-        showMessage('❌ Ошибка публикации: ' + err.message, 'error');
-      }
-    }
-
-    // 5. Отклонение поста
-    async function rejectPost(postId) {
-      const reasonInput = document.getElementById('reason-' + postId);
-      const reason = reasonInput?.value.trim() || 'Не прошло модерацию';
-
-      try {
-        await supabaseRequest(`posts?id=eq.${postId}`, 'PATCH', {
-          status: 'rejected',
-          reject_reason: reason
-        });
-        showMessage('Пост отклонен', 'success');
-        loadModQueue();
-      } catch (err) {
-        showMessage('❌ Ошибка: ' + err.message, 'error');
-      }
-    }
-
-    function escapeHtml(str) {
-      return String(str || '').replace(/[&<>"']/g, m => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
-    }
-  </script>
+    </script>
 </body>
 </html>
