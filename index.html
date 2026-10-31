@@ -9,129 +9,339 @@
         :root {
             --bg-color: var(--tg-theme-bg-color, #ffffff);
             --text-color: var(--tg-theme-text-color, #222222);
+            --hint-color: var(--tg-theme-hint-color, #888888);
             --btn-color: var(--tg-theme-button-color, #3390ec);
             --btn-text: var(--tg-theme-button-text-color, #ffffff);
             --sec-bg: var(--tg-theme-secondary-bg-color, #f4f4f5);
         }
+        * { box-sizing: border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             background-color: var(--bg-color);
             color: var(--text-color);
             margin: 0;
-            padding: 16px;
+            padding: 14px;
+            padding-bottom: 40px;
         }
+        h2 { margin: 0 0 12px 0; font-size: 20px; }
+        h3 { margin: 0 0 10px 0; font-size: 16px; }
+        
+        /* Вкладки (Табы) */
+        .tabs {
+            display: none; /* Показывается только админам */
+            gap: 8px;
+            margin-bottom: 14px;
+        }
+        .tab-btn {
+            flex: 1;
+            padding: 10px;
+            border-radius: 10px;
+            background: var(--sec-bg);
+            color: var(--text-color);
+            border: none;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        .tab-btn.active {
+            background: var(--btn-color);
+            color: var(--btn-text);
+        }
+        .tab-view { display: none; }
+        .tab-view.active { display: block; }
+
         .card {
             background: var(--sec-bg);
             border-radius: 14px;
-            padding: 16px;
-            margin-bottom: 16px;
+            padding: 14px;
+            margin-bottom: 14px;
         }
-        h2 { margin-top: 0; font-size: 20px; }
-        textarea {
+        textarea, input[type="text"], input[type="number"] {
             width: 100%;
-            min-height: 120px;
             border: 1px solid rgba(128, 128, 128, 0.25);
             border-radius: 10px;
-            padding: 12px;
+            padding: 10px 12px;
             background: var(--bg-color);
             color: var(--text-color);
-            font-size: 15px;
-            resize: none;
-            box-sizing: border-box;
+            font-size: 14px;
             outline: none;
+            margin-bottom: 8px;
         }
+        textarea { min-height: 110px; resize: none; }
         .file-label {
             display: block;
-            margin-top: 12px;
-            padding: 10px;
-            border: 1px dashed var(--btn-color);
+            margin: 8px 0;
+            padding: 11px;
+            border: 1.5px dashed var(--btn-color);
             border-radius: 10px;
             text-align: center;
             cursor: pointer;
             font-size: 14px;
+            font-weight: 500;
         }
-        #preview {
-            display: none;
-            width: 100%;
-            max-height: 220px;
-            object-fit: cover;
-            border-radius: 10px;
-            margin-top: 10px;
-        }
+        #preview-wrap { display: none; margin: 10px 0; }
+        #preview { width: 100%; max-height: 200px; object-fit: cover; border-radius: 10px; }
         .toggle-row {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin: 14px 0;
-            font-size: 15px;
+            margin: 12px 0;
+            font-size: 14px;
         }
         button {
             width: 100%;
-            padding: 14px;
+            padding: 12px;
             border: none;
-            border-radius: 12px;
+            border-radius: 10px;
             background-color: var(--btn-color);
             color: var(--btn-text);
-            font-size: 16px;
+            font-size: 15px;
             font-weight: 600;
             cursor: pointer;
         }
         button:disabled { opacity: 0.6; }
-        #admin-box { display: none; border: 1px solid var(--btn-color); }
+        .btn-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+            margin-top: 8px;
+        }
+        .btn-sm { padding: 8px; font-size: 13px; border-radius: 8px; }
+        .btn-green { background: #10b981; color: #fff; }
+        .btn-red { background: #ef4444; color: #fff; }
+        .btn-orange { background: #f59e0b; color: #fff; }
+        .btn-gray { background: #64748b; color: #fff; }
+
+        .item-box {
+            background: var(--bg-color);
+            border-radius: 10px;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid rgba(128,128,128,0.15);
+        }
+        .meta {
+            font-size: 12px;
+            color: var(--hint-color);
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+        }
     </style>
 </head>
 <body>
 
     <h2>🤫 Подслушка 21 школы</h2>
 
-    <div class="card">
-        <textarea id="post-text" placeholder="Напиши свою историю, сплетню или вопрос..."></textarea>
-        
-        <label class="file-label">
-            📷 Прикрепить фото / мем
-            <input type="file" id="photo-input" accept="image/*" style="display:none" onchange="previewFile()">
-        </label>
-        <img id="preview" alt="Предпросмотр">
-
-        <div class="toggle-row">
-            <label for="anon-check">Опубликовать анонимно 🕵️</label>
-            <input type="checkbox" id="anon-check" checked style="transform: scale(1.3);">
-        </div>
-        <button id="submit-btn" onclick="sendPost()">Отправить в предложку</button>
+    <!-- Навигация по вкладкам (Появляется ТОЛЬКО у заданных админов) -->
+    <div class="tabs" id="admin-tabs">
+        <button class="tab-btn active" onclick="switchTab('user', this)">✍️ Предложка</button>
+        <button class="tab-btn" onclick="switchTab('admin', this)">🛡️ Админ-панель</button>
     </div>
 
-    <div class="card" id="admin-box">
-        <h3 style="margin-top:0; font-size:16px;">📢 Рассылка всем (Админ)</h3>
-        <textarea id="bc-text" placeholder="Текст рассылки для всех пользователей..." style="min-height: 80px;"></textarea>
-        <button onclick="sendBroadcast()" style="margin-top: 10px;">Отправить всем</button>
+    <!-- ==================== ВКЛАДКА 1: ПРЕДЛОЖКА ==================== -->
+    <div id="view-user" class="tab-view active">
+        <div class="card">
+            <textarea id="post-text" placeholder="Напиши свою историю, сплетню или вопрос..."></textarea>
+
+            <label class="file-label">
+                📷 Прикрепить фото / картинку
+                <input type="file" id="photo-input" accept="image/*" style="display:none" onchange="previewFile()">
+            </label>
+
+            <div id="preview-wrap">
+                <img id="preview" alt="Предпросмотр">
+                <button type="button" class="btn-sm btn-red" style="margin-top:6px;" onclick="clearPhoto()">🗑 Удалить фото</button>
+            </div>
+
+            <div class="toggle-row">
+                <label for="anon-check">Опубликовать анонимно 🕵️</label>
+                <input type="checkbox" id="anon-check" checked style="transform: scale(1.3);">
+            </div>
+            <button id="submit-btn" onclick="sendPost()">Отправить в предложку</button>
+        </div>
+    </div>
+
+    <!-- ==================== ВКЛАДКА 2: АДМИН-ПАНЕЛЬ ==================== -->
+    <div id="view-admin" class="tab-view">
+        <div class="card">
+            <button class="btn-sm" style="margin-bottom: 10px;" onclick="syncDatabase()">🔄 Обновить список заявок и юзеров</button>
+            <div style="font-size:12px; color:var(--hint-color); text-align:center;">
+                Нажмите кнопку выше, если хотите подгрузить самые свежие заявки из бота
+            </div>
+        </div>
+
+        <!-- Секция 1: Необработанные заявки -->
+        <div class="card">
+            <h3>📩 Необработанные заявки (<span id="pending-count">0</span>)</h3>
+            <div id="pending-list"></div>
+        </div>
+
+        <!-- Секция 2: Все пользователи -->
+        <div class="card">
+            <h3>👥 Пользователи бота (<span id="users-count">0</span>)</h3>
+            <div id="users-list"></div>
+        </div>
+
+        <!-- Секция 3: Личное сообщение и Рассылка -->
+        <div class="card">
+            <h3>✉️ Написать лично / Рассылка</h3>
+            <input type="number" id="pm-uid" placeholder="Telegram ID получателя (оставьте пустым для рассылки ВСЕМ)">
+            <textarea id="bc-text" placeholder="Введите текст сообщения..." style="min-height: 75px;"></textarea>
+            <button onclick="sendAdminMessage()">Отправить сообщение</button>
+        </div>
     </div>
 
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
 
-        // ВСТАВЬТЕ СЮДА БЕСПЛАТНЫЙ КЛЮЧ С САЙТА https://api.imgbb.com/
-        const IMGBB_API_KEY = "72fd6c4dc2451b20eee1e6bdb971fca4";
+        // ======= СПИСОК РАЗРЕШЕННЫХ TELEGRAM ID АДМИНОВ =======
+        const ALLOWED_ADMINS = [1389964621];
+        // ======= КЛЮЧ IMGBB ДЛЯ ЗАГРУЗКИ КАРТИНОК =======
+        const IMGBB_API_KEY = "ВАШ_КЛЮЧ_IMGBB";
+        // ======================================================
 
-        const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.get('admin') === '1') {
-            document.getElementById('admin-box').style.display = 'block';
+        const currentUserId = tg.initDataUnsafe?.user?.id || 0;
+        const isAdmin = ALLOWED_ADMINS.includes(currentUserId);
+
+        // Показываем вкладку админа ТОЛЬКО если его Telegram ID в списке ALLOWED_ADMINS
+        if (isAdmin) {
+            document.getElementById('admin-tabs').style.display = 'flex';
+            loadAdminDataFromHash();
         }
 
+        function switchTab(tab, btn) {
+            if (tab === 'admin' && !isAdmin) return;
+            document.querySelectorAll('.tab-view').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            document.getElementById('view-' + tab).classList.add('active');
+            btn.classList.add('active');
+        }
+
+        function decodeBase64Url(str) {
+            str = str.replace(/-/g, '+').replace(/_/g, '/');
+            while (str.length % 4) str += '=';
+            return decodeURIComponent(Array.prototype.map.call(atob(str), c =>
+                '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+            ).join(''));
+        }
+
+        function escapeHtml(s) {
+            return String(s || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+        }
+
+        function loadAdminDataFromHash() {
+            const hash = window.location.hash;
+            const pendingEl = document.getElementById('pending-list');
+            const usersEl = document.getElementById('users-list');
+
+            if (!hash.startsWith('#data=')) {
+                pendingEl.innerHTML = '<div style="font-size:13px; color:var(--hint-color)">Нажмите «🔄 Обновить список», чтобы загрузить данные.</div>';
+                usersEl.innerHTML = '<div style="font-size:13px; color:var(--hint-color)">Нет загруженных данных.</div>';
+                return;
+            }
+
+            try {
+                const rawJson = decodeBase64Url(hash.substring(6));
+                const data = JSON.parse(rawJson);
+                const posts = data.p || [];
+                const users = data.u || [];
+
+                document.getElementById('pending-count').innerText = posts.length;
+                document.getElementById('users-count').innerText = users.length;
+
+                // Отрисовка необработанных заявок
+                if (posts.length === 0) {
+                    pendingEl.innerHTML = '<div style="font-size:13px; color:var(--hint-color)">Все заявки разобраны! 🎉</div>';
+                } else {
+                    pendingEl.innerHTML = posts.map(p => `
+                        <div class="item-box">
+                            <div class="meta">
+                                <span><b>#${p.id}</b> от ${escapeHtml(p.un)} (<code>${p.uid}</code>)</span>
+                                <span>${p.a ? '🕵️ Анон' : '✍️ Публично'} ${p.ph ? '🖼 Фото' : ''}</span>
+                            </div>
+                            <div style="font-size:14px; margin-bottom:8px; white-space:pre-wrap;">${escapeHtml(p.t || '(Только фото)')}</div>
+                            <div class="btn-grid">
+                                <button class="btn-sm btn-green" onclick="modPost(${p.id}, 'approve')">✅ Принять</button>
+                                <button class="btn-sm btn-gray" onclick="modPost(${p.id}, 'reject')">❌ Отклонить</button>
+                                <button class="btn-sm btn-orange" onclick="modPost(${p.id}, 'warn')">⚠️ Варн (+1)</button>
+                                <button class="btn-sm btn-red" onclick="modPost(${p.id}, 'ban')">🚫 Бан</button>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+
+                // Отрисовка всех пользователей
+                if (users.length === 0) {
+                    usersEl.innerHTML = '<div style="font-size:13px; color:var(--hint-color)">Пользователей пока нет.</div>';
+                } else {
+                    usersEl.innerHTML = users.map(u => `
+                        <div class="item-box">
+                            <div class="meta">
+                                <span><b>${escapeHtml(u.fn)}</b> ${u.un ? '(@' + escapeHtml(u.un) + ')' : ''}</span>
+                                <span>ID: <code>${u.id}</code></span>
+                            </div>
+                            <div style="font-size:13px; margin-bottom:6px;">
+                                Статус: ${u.b ? '<b style="color:#ef4444">🚫 ЗАБАНЕН</b>' : '<b style="color:#10b981">Активен</b>'} | Варны: <b>${u.w}/3</b>
+                            </div>
+                            <div class="btn-grid">
+                                <button class="btn-sm btn-orange" onclick="modUser(${u.id}, 'warn')">⚠️ Выдать варн</button>
+                                ${u.b 
+                                    ? `<button class="btn-sm btn-green" onclick="modUser(${u.id}, 'unban')">✅ Разбанить</button>`
+                                    : `<button class="btn-sm btn-red" onclick="modUser(${u.id}, 'ban')">🚫 Забанить</button>`
+                                }
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            } catch (e) {
+                pendingEl.innerHTML = 'Ошибка чтения данных.';
+            }
+        }
+
+        // Действия админа
+        function syncDatabase() {
+            tg.sendData(JSON.stringify({ action: "sync" }));
+        }
+
+        function modPost(postId, subAction) {
+            tg.sendData(JSON.stringify({ action: "mod_post", post_id: postId, sub_action: subAction }));
+        }
+
+        function modUser(targetId, subAction) {
+            tg.sendData(JSON.stringify({ action: "mod_user", target_id: targetId, sub_action: subAction }));
+        }
+
+        function sendAdminMessage() {
+            const uid = document.getElementById('pm-uid').value.trim();
+            const text = document.getElementById('bc-text').value.trim();
+            if (!text) return tg.showAlert("Введите текст сообщения!");
+
+            if (uid) {
+                tg.sendData(JSON.stringify({ action: "pm", target_id: parseInt(uid), text: text }));
+            } else {
+                tg.sendData(JSON.stringify({ action: "broadcast", text: text }));
+            }
+        }
+
+        // Отправка обычного поста
         function previewFile() {
             const file = document.getElementById('photo-input').files[0];
-            const preview = document.getElementById('preview');
             if (file) {
-                preview.src = URL.createObjectURL(file);
-                preview.style.display = 'block';
+                document.getElementById('preview').src = URL.createObjectURL(file);
+                document.getElementById('preview-wrap').style.display = 'block';
             }
+        }
+
+        function clearPhoto() {
+            document.getElementById('photo-input').value = "";
+            document.getElementById('preview-wrap').style.display = 'none';
         }
 
         async function sendPost() {
             const text = document.getElementById('post-text').value.trim();
             const isAnon = document.getElementById('anon-check').checked;
-            const fileInput = document.getElementById('photo-input');
-            const file = fileInput.files[0];
+            const file = document.getElementById('photo-input').files[0];
 
             if (!text && !file) {
                 return tg.showAlert("Напишите текст или прикрепите фотографию!");
@@ -139,10 +349,9 @@
 
             const btn = document.getElementById('submit-btn');
             btn.disabled = true;
-            btn.innerText = "Загрузка...";
+            btn.innerText = "Отправка...";
 
             let photoUrl = null;
-
             if (file) {
                 const formData = new FormData();
                 formData.append("image", file);
@@ -157,12 +366,12 @@
                     } else {
                         btn.disabled = false;
                         btn.innerText = "Отправить в предложку";
-                        return tg.showAlert("Ошибка загрузки фото. Проверьте ключ IMGBB_API_KEY!");
+                        return tg.showAlert("Ошибка загрузки фото: проверьте IMGBB_API_KEY!");
                     }
                 } catch (e) {
                     btn.disabled = false;
                     btn.innerText = "Отправить в предложку";
-                    return tg.showAlert("Ошибка соединения при отправке картинки.");
+                    return tg.showAlert("Ошибка сети при загрузке картинки.");
                 }
             }
 
@@ -171,15 +380,6 @@
                 text: text,
                 is_anon: isAnon,
                 photo_url: photoUrl
-            }));
-        }
-
-        function sendBroadcast() {
-            const text = document.getElementById('bc-text').value.trim();
-            if (!text) return tg.showAlert("Введите текст рассылки!");
-            tg.sendData(JSON.stringify({
-                action: "broadcast",
-                text: text
             }));
         }
     </script>
