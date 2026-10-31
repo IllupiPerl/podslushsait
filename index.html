@@ -29,7 +29,7 @@
         h2 { margin-top: 0; font-size: 20px; }
         textarea {
             width: 100%;
-            min-height: 130px;
+            min-height: 120px;
             border: 1px solid rgba(128, 128, 128, 0.25);
             border-radius: 10px;
             padding: 12px;
@@ -39,6 +39,24 @@
             resize: none;
             box-sizing: border-box;
             outline: none;
+        }
+        .file-label {
+            display: block;
+            margin-top: 12px;
+            padding: 10px;
+            border: 1px dashed var(--btn-color);
+            border-radius: 10px;
+            text-align: center;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        #preview {
+            display: none;
+            width: 100%;
+            max-height: 220px;
+            object-fit: cover;
+            border-radius: 10px;
+            margin-top: 10px;
         }
         .toggle-row {
             display: flex;
@@ -58,6 +76,7 @@
             font-weight: 600;
             cursor: pointer;
         }
+        button:disabled { opacity: 0.6; }
         #admin-box { display: none; border: 1px solid var(--btn-color); }
     </style>
 </head>
@@ -67,14 +86,20 @@
 
     <div class="card">
         <textarea id="post-text" placeholder="Напиши свою историю, сплетню или вопрос..."></textarea>
+        
+        <label class="file-label">
+            📷 Прикрепить фото / мем
+            <input type="file" id="photo-input" accept="image/*" style="display:none" onchange="previewFile()">
+        </label>
+        <img id="preview" alt="Предпросмотр">
+
         <div class="toggle-row">
             <label for="anon-check">Опубликовать анонимно 🕵️</label>
             <input type="checkbox" id="anon-check" checked style="transform: scale(1.3);">
         </div>
-        <button onclick="sendPost()">Отправить в предложку</button>
+        <button id="submit-btn" onclick="sendPost()">Отправить в предложку</button>
     </div>
 
-    <!-- Секретная панель для админа (включается, если открыть ссылку с ?admin=1) -->
     <div class="card" id="admin-box">
         <h3 style="margin-top:0; font-size:16px;">📢 Рассылка всем (Админ)</h3>
         <textarea id="bc-text" placeholder="Текст рассылки для всех пользователей..." style="min-height: 80px;"></textarea>
@@ -85,29 +110,73 @@
         const tg = window.Telegram.WebApp;
         tg.expand();
 
-        // Если в ссылке есть ?admin=1, показываем блок рассылки
+        // ВСТАВЬТЕ СЮДА БЕСПЛАТНЫЙ КЛЮЧ С САЙТА https://api.imgbb.com/
+        const IMGBB_API_KEY = "ВАШ_КЛЮЧ_IMGBB";
+
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.get('admin') === '1') {
             document.getElementById('admin-box').style.display = 'block';
         }
 
-        function sendPost() {
+        function previewFile() {
+            const file = document.getElementById('photo-input').files[0];
+            const preview = document.getElementById('preview');
+            if (file) {
+                preview.src = URL.createObjectURL(file);
+                preview.style.display = 'block';
+            }
+        }
+
+        async function sendPost() {
             const text = document.getElementById('post-text').value.trim();
             const isAnon = document.getElementById('anon-check').checked;
-            if (!text) return tg.showAlert("Введите текст записи!");
+            const fileInput = document.getElementById('photo-input');
+            const file = fileInput.files[0];
 
-            // Отправляем данные напрямую боту через Telegram без всяких серверов!
+            if (!text && !file) {
+                return tg.showAlert("Напишите текст или прикрепите фотографию!");
+            }
+
+            const btn = document.getElementById('submit-btn');
+            btn.disabled = true;
+            btn.innerText = "Загрузка...";
+
+            let photoUrl = null;
+
+            if (file) {
+                const formData = new FormData();
+                formData.append("image", file);
+                try {
+                    const res = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
+                        method: "POST",
+                        body: formData
+                    });
+                    const json = await res.json();
+                    if (json.success) {
+                        photoUrl = json.data.url;
+                    } else {
+                        btn.disabled = false;
+                        btn.innerText = "Отправить в предложку";
+                        return tg.showAlert("Ошибка загрузки фото. Проверьте ключ IMGBB_API_KEY!");
+                    }
+                } catch (e) {
+                    btn.disabled = false;
+                    btn.innerText = "Отправить в предложку";
+                    return tg.showAlert("Ошибка соединения при отправке картинки.");
+                }
+            }
+
             tg.sendData(JSON.stringify({
                 action: "submit",
                 text: text,
-                is_anon: isAnon
+                is_anon: isAnon,
+                photo_url: photoUrl
             }));
         }
 
         function sendBroadcast() {
             const text = document.getElementById('bc-text').value.trim();
             if (!text) return tg.showAlert("Введите текст рассылки!");
-
             tg.sendData(JSON.stringify({
                 action: "broadcast",
                 text: text
