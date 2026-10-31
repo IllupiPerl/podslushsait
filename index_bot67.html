@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>СЛУХ №21 — Mini App</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        :root {
+            --bg-color: var(--tg-theme-bg-color, #080d18);
+            --text-color: var(--tg-theme-text-color, #f4f7ff);
+            --hint-color: var(--tg-theme-hint-color, #9aabc4);
+            --btn-color: var(--tg-theme-button-color, #367cff);
+            --btn-text: var(--tg-theme-button-text-color, #ffffff);
+            --sec-bg: var(--tg-theme-secondary-bg-color, #111b2c);
+            --line-color: rgba(255, 255, 255, 0.08);
+            --green: #10b981;
+            --red: #ef4444;
+            --orange: #f59e0b;
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 16px;
+            padding-bottom: 44px;
+        }
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 14px;
+        }
+        .brand {
+            font-size: 20px;
+            font-weight: 850;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+        }
+        .badges-wrap {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .role-pill {
+            font-size: 11px;
+            font-weight: 600;
+            color: #9bbcff;
+            background: #172d50;
+            padding: 4px 10px;
+            border-radius: 20px;
+            border: 1px solid rgba(54, 124, 255, 0.3);
+        }
+        .api-badge {
+            font-size: 11px;
+            padding: 4px 8px;
+            border-radius: 20px;
+            background: rgba(128, 128, 128, 0.15);
+            color: var(--hint-color);
+            cursor: pointer;
+            border: 1px solid rgba(128, 128, 128, 0.25);
+        }
+        .api-badge.online { color: #10b981; border-color: rgba(16, 185, 129, 0.4); }
+        .api-badge.offline { color: #f59e0b; border-color: rgba(245, 158, 11, 0.4); }
+
+        .tabs {
+            display: flex;
+            gap: 8px;
+            margin: 14px 0 16px 0;
+        }
+        .tab-btn {
+            flex: 1;
+            padding: 11px;
+            border-radius: 12px;
+            background: var(--sec-bg);
+            color: var(--text-color);
+            border: 1px solid var(--line-color);
+            font-weight: 700;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .tab-btn.active {
+            background: var(--btn-color);
+            color: var(--btn-text);
+            border-color: var(--btn-color);
+        }
+
+        .tab-view { display: none; }
+        .tab-view.active { display: block; }
+
+        .card {
+            background: var(--sec-bg);
+            border: 1px solid var(--line-color);
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 14px;
+        }
+        .card-title {
+            font-size: 16px;
+            font-weight: 750;
+            margin-bottom: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .desc {
+            font-size: 13px;
+            color: var(--hint-color);
+            margin: 0 0 12px 0;
+            line-height: 1.4;
+        }
+
+        textarea, input[type="text"], input[type="number"] {
+            width: 100%;
+            border: 1px solid var(--line-color);
+            border-radius: 12px;
+            padding: 12px;
+            background: rgba(0, 0, 0, 0.25);
+            color: var(--text-color);
+            font-size: 14px;
+            outline: none;
+            margin-bottom: 8px;
+            transition: border-color 0.2s ease;
+        }
+        textarea:focus, input:focus {
+            border-color: var(--btn-color);
+        }
+        textarea {
+            min-height: 130px;
+            resize: vertical;
+            max-height: 350px;
+        }
+
+        .counter-row {
+            display: flex;
+            justify-content: flex-end;
+            font-size: 11px;
+            color: var(--hint-color);
+            margin-top: -4px;
+            margin-bottom: 10px;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 12px;
+            background-color: var(--btn-color);
+            color: var(--btn-text);
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: opacity 0.2s ease, transform 0.1s ease;
+        }
+        button:active { transform: scale(0.98); }
+        button:disabled { opacity: 0.6; cursor: default; }
+
+        .btn-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        .btn-sm { padding: 9px; font-size: 13px; border-radius: 10px; }
+        .btn-green { background: #10b981; color: #fff; }
+        .btn-red { background: #ef4444; color: #fff; }
+        .btn-orange { background: #f59e0b; color: #fff; }
+
+        .item-box {
+            background: rgba(0, 0, 0, 0.22);
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 12px;
+            border: 1px solid var(--line-color);
+            transition: opacity 0.25s ease, transform 0.25s ease;
+        }
+        .meta {
+            font-size: 12px;
+            color: var(--hint-color);
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+        .item-text {
+            font-size: 14px;
+            line-height: 1.45;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+        }
+        .status-tag {
+            font-size: 11px;
+            padding: 2px 7px;
+            border-radius: 6px;
+            font-weight: 600;
+        }
+        .status-approved { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+        .status-pending { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+        .status-rejected { background: rgba(239, 68, 68, 0.2); color: #f87171; }
+
+        /* Плавающее уведомление (Toast) */
+        #toast {
+            position: fixed;
+            top: 14px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-60px);
+            background: #10b981;
+            color: #ffffff;
+            padding: 10px 18px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+            opacity: 0;
+            pointer-events: none;
+            transition: transform 0.25s ease, opacity 0.25s ease;
+            z-index: 99999;
+            max-width: 90%;
+            text-align: center;
+        }
+        #toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+        #toast.error {
+            background: #ef4444;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="toast">Уведомление</div>
+
+    <div class="header-top">
+        <div class="brand" onclick="secretAdminTap()">🤫 СЛУХ №21</div>
+        <div class="badges-wrap">
+            <span class="api-badge" id="api-status-badge" onclick="configureApiUrl()" title="Нажмите для настройки API адреса">● Подключение...</span>
+            <div class="role-pill" id="role-pill">Загрузка…</div>
+        </div>
+    </div>
+
+    <div class="tabs">
+        <button class="tab-btn active" id="tab-btn-user" onclick="switchTab('user', this)">✍️ Заявка</button>
+        <button class="tab-btn" id="tab-btn-admin" style="display:none;" onclick="switchTab('admin', this)">🛡️ Модерация</button>
+    </div>
+
+    <!-- ==================== ВКЛАДКА 1: ПОЛЬЗОВАТЕЛЬ ==================== -->
+    <div id="view-user" class="tab-view active">
+        <div class="card">
+            <div class="card-title">Новая публикация</div>
+            <p class="desc">Заявка отправляется на проверку модераторам. Публикация в канал — только после одобрения.</p>
+            
+            <textarea id="post-body" maxlength="3500" placeholder="Напиши свою историю, новость или вопрос..." oninput="updateCounter()"></textarea>
+            <div class="counter-row">
+                <span id="char-counter">0 / 3500</span>
+            </div>
+            
+            <button id="submit-btn" onclick="submitRequest()">Отправить заявку</button>
+        </div>
+
+        <div class="card">
+            <div class="card-title">
+                <span>📋 Мои заявки</span>
+                <span style="font-size:12px; font-weight:normal; color:var(--hint-color); cursor:pointer;" onclick="loadUserRequests()">🔄 Обновить</span>
+            </div>
+            <div id="my-requests-list" style="margin-top: 10px;">
+                <div style="font-size:13px; color:var(--hint-color);">Загрузка заявок...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== ВКЛАДКА 2: АДМИНИСТРАЦИЯ ==================== -->
+    <div id="view-admin" class="tab-view">
+        <div class="card">
+            <div class="card-title">
+                <span>📩 Заявки на проверке (<span id="admin-pending-count">0</span>)</span>
+                <button class="btn-sm" style="width:auto; padding:6px 12px;" onclick="loadAdminQueue()">🔄 Обновить</button>
+            </div>
+            <p class="desc">Принимайте или отклоняйте записи в реальном времени. Вкладка не закроется!</p>
+            <div id="admin-queue"></div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">⚖️ Управление пользователем</div>
+            <p class="desc">Укажите Telegram ID пользователя или трёхзначный персональный код.</p>
+            <input type="text" id="target-user" placeholder="Telegram ID или код">
+            <input type="text" id="warn-reason" placeholder="Причина предупреждения / бана">
+            <button class="btn-sm btn-orange" onclick="warnUser()">⚠️ Выдать предупреждение (+1 варн)</button>
+
+            <div style="margin-top:14px; border-top:1px solid var(--line-color); padding-top:12px;">
+                <input type="number" id="ban-hours" min="0.1" max="8760" step="0.5" placeholder="Срок блокировки в часах (например, 24)">
+                <button class="btn-sm btn-red" onclick="banUser()">🚫 Заблокировать пользователя</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const tg = window.Telegram?.WebApp;
+        if (tg) {
+            tg.ready();
+            tg.expand();
+        }
+
+        const urlParams = new URLSearchParams(window.location.search);
+        let isAdmin = false;
+
+        // ==================== ОПРЕДЕЛЕНИЕ АДРЕСА API БОТА ====================
+        let savedApi = localStorage.getItem('bot67_api_url') || '';
+        let isGithub = window.location.hostname.includes('github.io');
+        let API_BASE_URL = urlParams.get('api') || savedApi || (isGithub ? '' : window.location.origin);
+        if (API_BASE_URL) API_BASE_URL = API_BASE_URL.replace(/\/+$/, '');
+
+        async function checkApiHealth() {
+            const badge = document.getElementById('api-status-badge');
+            if (!API_BASE_URL && isGithub) {
+                badge.className = 'api-badge offline';
+                badge.innerText = '⚙️ Настроить API';
+                return false;
+            }
+            try {
+                const res = await fetch((API_BASE_URL || '') + '/api/me', {
+                    headers: { 'X-Telegram-Init-Data': tg?.initData || '' }
+                });
+                if (res.ok || res.status === 401 || res.status === 403) {
+                    badge.className = 'api-badge online';
+                    badge.innerText = '● Онлайн';
+                    return true;
+                }
+            } catch (e) {
+                badge.className = 'api-badge offline';
+                badge.innerText = '● Офлайн';
+                return false;
+            }
+        }
+
+        function configureApiUrl() {
+            const promptVal = prompt("Введите публичный HTTPS адрес сервера бота (например из ngrok или Cloudflare Tunnel):\n\nОставьте пустым для автоопределения:", API_BASE_URL);
+            if (promptVal !== null) {
+                API_BASE_URL = promptVal.trim().replace(/\/+$/, '');
+                localStorage.setItem('bot67_api_url', API_BASE_URL);
+                showToast("Адрес API сохранен: " + (API_BASE_URL || "Авто"));
+                checkApiHealth();
+                boot();
+            }
+        }
+
+        // ==================== ВСПЛЫВАЮЩИЕ УВЕДОМЛЕНИЯ ====================
+        let toastTimer = null;
+        function showToast(text, isError = false) {
+            const el = document.getElementById('toast');
+            el.innerText = text;
+            el.className = isError ? 'show error' : 'show';
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => {
+                el.className = '';
+            }, 2600);
+        }
+
+        function escapeHtml(s) {
+            return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+        }
+
+        // ==================== API КЛИЕНТ ====================
+        async function api(path, method = 'GET', data = null) {
+            const url = (API_BASE_URL || '') + path;
+            const headers = {
+                'Content-Type': 'application/json',
+                'X-Telegram-Init-Data': tg?.initData || '',
+                'X-Init-Data': tg?.initData || ''
+            };
+
+            let res;
+            try {
+                res = await fetch(url, {
+                    method: method,
+                    headers: headers,
+                    body: data ? JSON.stringify(data) : undefined
+                });
+            } catch (netErr) {
+                throw new Error("Сервер бота недоступен по сети. Проверьте, запущен ли бот!");
+            }
+
+            const j = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                throw new Error(j.error || `Ошибка запроса (${res.status})`);
+            }
+            return j;
+        }
+
+        function switchTab(which, btn) {
+            document.querySelectorAll('.tab-view').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            document.getElementById('view-' + which).classList.add('active');
+            if (btn) btn.classList.add('active');
+            if (which === 'admin') loadAdminQueue();
+        }
+
+        function updateCounter() {
+            const len = document.getElementById('post-body').value.length;
+            document.getElementById('char-counter').innerText = `${len} / 3500`;
+        }
+
+        // Секретный клик по заголовку
+        let secretTaps = 0;
+        function secretAdminTap() {
+            secretTaps++;
+            if (secretTaps >= 5) {
+                isAdmin = true;
+                document.getElementById('role-pill').innerText = '🛡 Администратор';
+                document.getElementById('tab-btn-admin').style.display = 'block';
+                showToast("🛡️ Режим администратора активирован!");
+                switchTab('admin', document.getElementById('tab-btn-admin'));
+                secretTaps = 0;
+            }
+        }
+
+        // ==================== ЗАГРУЗКА И ДЕЙСТВИЯ ====================
+        async function boot() {
+            try {
+                const me = await api('/api/me');
+                isAdmin = !!me.admin;
+                document.getElementById('role-pill').innerText = isAdmin ? '🛡 Администратор' : '👤 Участник';
+                document.getElementById('tab-btn-admin').style.display = isAdmin ? 'block' : 'none';
+                renderUserRequests(me.requests || []);
+            } catch (e) {
+                document.getElementById('role-pill').innerText = 'Гость';
+                document.getElementById('my-requests-list').innerHTML = `
+                    <div style="font-size:13px; color:var(--hint-color);">
+                        ${escapeHtml(e.message)}
+                    </div>
+                `;
+            }
+        }
+
+        function renderUserRequests(requests) {
+            const wrap = document.getElementById('my-requests-list');
+            if (!requests || requests.length === 0) {
+                wrap.innerHTML = '<div style="font-size:13px; color:var(--hint-color)">Заявок пока нет. Напишите первую выше!</div>';
+                return;
+            }
+            wrap.innerHTML = requests.map(r => {
+                let badgeClass = 'status-pending';
+                let badgeText = 'На проверке';
+                if (r.status === 'approved') {
+                    badgeClass = 'status-approved';
+                    badgeText = '✅ Одобрено';
+                } else if (r.status === 'rejected') {
+                    badgeClass = 'status-rejected';
+                    badgeText = '❌ Отклонено';
+                }
+                return `
+                    <div class="item-box">
+                        <div class="meta">
+                            <span><b>Заявка №${r.id}</b></span>
+                            <span class="status-tag ${badgeClass}">${badgeText}</span>
+                        </div>
+                        <div class="item-text">${escapeHtml(r.content_text)}</div>
+                        <div style="font-size:11px; color:var(--hint-color); margin-top:6px;">${escapeHtml(r.created_at || '')}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function loadUserRequests() {
+            try {
+                const me = await api('/api/me');
+                renderUserRequests(me.requests || []);
+                showToast("Список заявок обновлен");
+            } catch (e) {
+                showToast(e.message, true);
+            }
+        }
+
+        async function submitRequest() {
+            const body = document.getElementById('post-body').value.trim();
+            if (!body) {
+                return tg ? tg.showAlert("Напишите текст заявки!") : alert("Напишите текст заявки!");
+            }
+
+            const btn = document.getElementById('submit-btn');
+            btn.disabled = true;
+            btn.innerText = "Отправка...";
+
+            try {
+                const res = await api('/api/submit', 'POST', { text: body });
+                showToast(`✅ Заявка №${res.id} отправлена!`);
+                document.getElementById('post-body').value = '';
+                updateCounter();
+                if (tg) tg.showAlert(`✅ Заявка №${res.id} отправлена на модерацию!`);
+                boot();
+            } catch (e) {
+                showToast(e.message, true);
+                if (tg) tg.showAlert("Ошибка: " + e.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "Отправить заявку";
+            }
+        }
+
+        // ==================== АДМИН-ДЕЙСТВИЯ ====================
+        async function loadAdminQueue() {
+            const queueEl = document.getElementById('admin-queue');
+            queueEl.innerHTML = '<div style="font-size:13px; color:var(--hint-color);">Загрузка списка заявок...</div>';
+            try {
+                const res = await api('/api/admin/requests');
+                const reqs = res.requests || [];
+                document.getElementById('admin-pending-count').innerText = reqs.length;
+
+                if (reqs.length === 0) {
+                    queueEl.innerHTML = '<div style="font-size:13px; color:var(--hint-color)">Необработанных заявок нет! 🎉</div>';
+                    return;
+                }
+
+                queueEl.innerHTML = reqs.map(r => `
+                    <div class="item-box" id="admin-card-${r.id}">
+                        <div class="meta">
+                            <span><b>№${r.id}</b> · ID <code>${r.user_id}</code></span>
+                            <span>${escapeHtml(r.created_at || '')}</span>
+                        </div>
+                        <div class="item-text">${escapeHtml(r.content_text)}</div>
+                        <div class="btn-grid">
+                            <button class="btn-sm btn-green" onclick="decidePost(${r.id}, 'approve')">✅ Принять</button>
+                            <button class="btn-sm btn-red" onclick="decidePost(${r.id}, 'reject')">❌ Отклонить</button>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (e) {
+                queueEl.innerHTML = `<div style="font-size:13px; color:var(--hint-color);">${escapeHtml(e.message)}</div>`;
+            }
+        }
+
+        async function decidePost(id, decision) {
+            try {
+                await api('/api/admin/decision', 'POST', { id, decision });
+                showToast(decision === 'approve' ? `Заявка №${id} принята` : `Заявка №${id} отклонена`);
+
+                // Анимация удаления карточки
+                const el = document.getElementById('admin-card-' + id);
+                if (el) {
+                    el.style.opacity = '0';
+                    el.style.transform = 'scale(0.95)';
+                    setTimeout(() => {
+                        el.remove();
+                        const c = document.getElementById('admin-pending-count');
+                        let val = Math.max(0, (parseInt(c.innerText) || 1) - 1);
+                        c.innerText = val;
+                        if (val === 0) {
+                            document.getElementById('admin-queue').innerHTML = '<div style="font-size:13px; color:var(--hint-color)">Необработанных заявок нет! 🎉</div>';
+                        }
+                    }, 250);
+                }
+            } catch (e) {
+                showToast(e.message, true);
+                if (tg) tg.showAlert("Ошибка: " + e.message);
+            }
+        }
+
+        async function warnUser() {
+            const target = document.getElementById('target-user').value.trim();
+            const reason = document.getElementById('warn-reason').value.trim();
+            if (!target) return tg ? tg.showAlert("Укажите ID пользователя!") : alert("Укажите ID пользователя!");
+
+            try {
+                const res = await api('/api/admin/warn', 'POST', { target, reason });
+                showToast(res.message || "Предупреждение выдано!");
+                if (tg) tg.showAlert(res.message || "Предупреждение выдано!");
+                document.getElementById('warn-reason').value = '';
+            } catch (e) {
+                showToast(e.message, true);
+                if (tg) tg.showAlert("Ошибка: " + e.message);
+            }
+        }
+
+        async function banUser() {
+            const target = document.getElementById('target-user').value.trim();
+            const hours = document.getElementById('ban-hours').value.trim();
+            const reason = document.getElementById('warn-reason').value.trim();
+            if (!target) return tg ? tg.showAlert("Укажите ID пользователя!") : alert("Укажите ID пользователя!");
+
+            try {
+                const res = await api('/api/admin/ban', 'POST', { target, hours, reason });
+                showToast(res.message || "Пользователь заблокирован!");
+                if (tg) tg.showAlert(res.message || "Пользователь заблокирован!");
+                document.getElementById('ban-hours').value = '';
+            } catch (e) {
+                showToast(e.message, true);
+                if (tg) tg.showAlert("Ошибка: " + e.message);
+            }
+        }
+
+        // Запуск
+        checkApiHealth();
+        boot();
+    </script>
+</body>
+</html>
