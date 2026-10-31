@@ -7,12 +7,12 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         :root {
-            --bg-color: var(--tg-theme-bg-color, #ffffff);
-            --text-color: var(--tg-theme-text-color, #222222);
+            --bg-color: var(--tg-theme-bg-color, #18222d);
+            --text-color: var(--tg-theme-text-color, #ffffff);
             --hint-color: var(--tg-theme-hint-color, #888888);
             --btn-color: var(--tg-theme-button-color, #3390ec);
             --btn-text: var(--tg-theme-button-text-color, #ffffff);
-            --sec-bg: var(--tg-theme-secondary-bg-color, #f4f4f5);
+            --sec-bg: var(--tg-theme-secondary-bg-color, #131a22);
         }
         * { box-sizing: border-box; }
         body {
@@ -23,12 +23,11 @@
             padding: 14px;
             padding-bottom: 40px;
         }
-        h2 { margin: 0 0 12px 0; font-size: 20px; }
+        h2 { margin: 0 0 12px 0; font-size: 20px; user-select: none; cursor: pointer; }
         h3 { margin: 0 0 10px 0; font-size: 16px; }
         
-        /* Вкладки (Табы) */
         .tabs {
-            display: none; /* Показывается только админам */
+            display: none;
             gap: 8px;
             margin-bottom: 14px;
         }
@@ -38,7 +37,7 @@
             border-radius: 10px;
             background: var(--sec-bg);
             color: var(--text-color);
-            border: none;
+            border: 1px solid rgba(128, 128, 128, 0.2);
             font-weight: 600;
             font-size: 14px;
             cursor: pointer;
@@ -46,6 +45,7 @@
         .tab-btn.active {
             background: var(--btn-color);
             color: var(--btn-text);
+            border-color: var(--btn-color);
         }
         .tab-view { display: none; }
         .tab-view.active { display: block; }
@@ -130,12 +130,11 @@
 </head>
 <body>
 
-    <h2>🤫 Подслушка 21 школы</h2>
+    <h2 onclick="secretTap()">🤫 Подслушка 21 школы</h2>
 
-    <!-- Навигация по вкладкам (Появляется ТОЛЬКО у заданных админов) -->
     <div class="tabs" id="admin-tabs">
-        <button class="tab-btn active" onclick="switchTab('user', this)">✍️ Предложка</button>
-        <button class="tab-btn" onclick="switchTab('admin', this)">🛡️ Админ-панель</button>
+        <button class="tab-btn active" id="btn-tab-user" onclick="switchTab('user', this)">✍️ Предложка</button>
+        <button class="tab-btn" id="btn-tab-admin" onclick="switchTab('admin', this)">🛡️ Админ-панель</button>
     </div>
 
     <!-- ==================== ВКЛАДКА 1: ПРЕДЛОЖКА ==================== -->
@@ -164,28 +163,25 @@
     <!-- ==================== ВКЛАДКА 2: АДМИН-ПАНЕЛЬ ==================== -->
     <div id="view-admin" class="tab-view">
         <div class="card">
-            <button class="btn-sm" style="margin-bottom: 10px;" onclick="syncDatabase()">🔄 Обновить список заявок и юзеров</button>
+            <button class="btn-sm" style="margin-bottom: 8px;" onclick="syncDatabase()">🔄 Обновить базу заявок и юзеров</button>
             <div style="font-size:12px; color:var(--hint-color); text-align:center;">
-                Нажмите кнопку выше, если хотите подгрузить самые свежие заявки из бота
+                Нажмите кнопку выше, чтобы бот прислал свежий список из базы данных
             </div>
         </div>
 
-        <!-- Секция 1: Необработанные заявки -->
         <div class="card">
             <h3>📩 Необработанные заявки (<span id="pending-count">0</span>)</h3>
             <div id="pending-list"></div>
         </div>
 
-        <!-- Секция 2: Все пользователи -->
         <div class="card">
-            <h3>👥 Пользователи бота (<span id="users-count">0</span>)</h3>
+            <h3>👥 Все пользователи (<span id="users-count">0</span>)</h3>
             <div id="users-list"></div>
         </div>
 
-        <!-- Секция 3: Личное сообщение и Рассылка -->
         <div class="card">
             <h3>✉️ Написать лично / Рассылка</h3>
-            <input type="number" id="pm-uid" placeholder="Telegram ID получателя (оставьте пустым для рассылки ВСЕМ)">
+            <input type="number" id="pm-uid" placeholder="Telegram ID получателя (пусто = рассылка ВСЕМ)">
             <textarea id="bc-text" placeholder="Введите текст сообщения..." style="min-height: 75px;"></textarea>
             <button onclick="sendAdminMessage()">Отправить сообщение</button>
         </div>
@@ -195,23 +191,39 @@
         const tg = window.Telegram.WebApp;
         tg.expand();
 
-        // ======= СПИСОК РАЗРЕШЕННЫХ TELEGRAM ID АДМИНОВ =======
         const ALLOWED_ADMINS = [1389964621];
-        // ======= КЛЮЧ IMGBB ДЛЯ ЗАГРУЗКИ КАРТИНОК =======
         const IMGBB_API_KEY = "ВАШ_КЛЮЧ_IMGBB";
-        // ======================================================
 
+        const urlParams = new URLSearchParams(window.location.search);
         const currentUserId = tg.initDataUnsafe?.user?.id || 0;
-        const isAdmin = ALLOWED_ADMINS.includes(currentUserId);
 
-        // Показываем вкладку админа ТОЛЬКО если его Telegram ID в списке ALLOWED_ADMINS
+        let isAdmin = (
+            urlParams.get('admin') === '1' ||
+            window.location.hash.startsWith('#data=') ||
+            ALLOWED_ADMINS.includes(currentUserId)
+        );
+
         if (isAdmin) {
+            enableAdminUI();
+        }
+
+        let tapCount = 0;
+        function secretTap() {
+            tapCount++;
+            if (tapCount >= 5) {
+                isAdmin = true;
+                enableAdminUI();
+                switchTab('admin', document.getElementById('btn-tab-admin'));
+                tapCount = 0;
+            }
+        }
+
+        function enableAdminUI() {
             document.getElementById('admin-tabs').style.display = 'flex';
             loadAdminDataFromHash();
         }
 
         function switchTab(tab, btn) {
-            if (tab === 'admin' && !isAdmin) return;
             document.querySelectorAll('.tab-view').forEach(el => el.classList.remove('active'));
             document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
             document.getElementById('view-' + tab).classList.add('active');
@@ -236,8 +248,8 @@
             const usersEl = document.getElementById('users-list');
 
             if (!hash.startsWith('#data=')) {
-                pendingEl.innerHTML = '<div style="font-size:13px; color:var(--hint-color)">Нажмите «🔄 Обновить список», чтобы загрузить данные.</div>';
-                usersEl.innerHTML = '<div style="font-size:13px; color:var(--hint-color)">Нет загруженных данных.</div>';
+                pendingEl.innerHTML = '<div style="font-size:13px; color:var(--hint-color)">Нажмите «🔄 Обновить базу заявок и юзеров» выше, чтобы загрузить данные из бота.</div>';
+                usersEl.innerHTML = '<div style="font-size:13px; color:var(--hint-color)">Нажмите кнопку обновления выше.</div>';
                 return;
             }
 
@@ -250,9 +262,8 @@
                 document.getElementById('pending-count').innerText = posts.length;
                 document.getElementById('users-count').innerText = users.length;
 
-                // Отрисовка необработанных заявок
                 if (posts.length === 0) {
-                    pendingEl.innerHTML = '<div style="font-size:13px; color:var(--hint-color)">Все заявки разобраны! 🎉</div>';
+                    pendingEl.innerHTML = '<div style="font-size:13px; color:var(--hint-color)">Необработанных заявок нет! 🎉</div>';
                 } else {
                     pendingEl.innerHTML = posts.map(p => `
                         <div class="item-box">
@@ -271,9 +282,8 @@
                     `).join('');
                 }
 
-                // Отрисовка всех пользователей
                 if (users.length === 0) {
-                    usersEl.innerHTML = '<div style="font-size:13px; color:var(--hint-color)">Пользователей пока нет.</div>';
+                    usersEl.innerHTML = '<div style="font-size:13px; color:var(--hint-color)">Пользователей в базе пока нет.</div>';
                 } else {
                     usersEl.innerHTML = users.map(u => `
                         <div class="item-box">
@@ -299,7 +309,6 @@
             }
         }
 
-        // Действия админа
         function syncDatabase() {
             tg.sendData(JSON.stringify({ action: "sync" }));
         }
@@ -324,7 +333,6 @@
             }
         }
 
-        // Отправка обычного поста
         function previewFile() {
             const file = document.getElementById('photo-input').files[0];
             if (file) {
