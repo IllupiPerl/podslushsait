@@ -49,7 +49,7 @@
         }
         .tab-view { display: none; }
         .tab-view.active { display: block; }
-
+​
         .card {
             background: var(--sec-bg);
             border-radius: 14px;
@@ -111,7 +111,7 @@
         .btn-red { background: #ef4444; color: #fff; }
         .btn-orange { background: #f59e0b; color: #fff; }
         .btn-gray { background: #64748b; color: #fff; }
-
+​
         .item-box {
             background: var(--bg-color);
             border-radius: 10px;
@@ -129,29 +129,29 @@
     </style>
 </head>
 <body>
-
+​
     <h2 onclick="secretTap()">🤫 Подслушка 21 школы</h2>
-
+​
     <div class="tabs" id="admin-tabs">
         <button class="tab-btn active" id="btn-tab-user" onclick="switchTab('user', this)">✍️ Предложка</button>
         <button class="tab-btn" id="btn-tab-admin" onclick="switchTab('admin', this)">🛡️ Админ-панель</button>
     </div>
-
+​
     <!-- ==================== ВКЛАДКА 1: ПРЕДЛОЖКА ==================== -->
     <div id="view-user" class="tab-view active">
         <div class="card">
             <textarea id="post-text" placeholder="Напиши свою историю, сплетню или вопрос..."></textarea>
-
+​
             <label class="file-label">
                 📷 Прикрепить фото / картинку
                 <input type="file" id="photo-input" accept="image/*" style="display:none" onchange="previewFile()">
             </label>
-
+​
             <div id="preview-wrap">
                 <img id="preview" alt="Предпросмотр">
                 <button type="button" class="btn-sm btn-red" style="margin-top:6px;" onclick="clearPhoto()">🗑 Удалить фото</button>
             </div>
-
+​
             <div class="toggle-row">
                 <label for="anon-check">Опубликовать анонимно 🕵️</label>
                 <input type="checkbox" id="anon-check" checked style="transform: scale(1.3);">
@@ -159,26 +159,26 @@
             <button id="submit-btn" onclick="sendPost()">Отправить в предложку</button>
         </div>
     </div>
-
+​
     <!-- ==================== ВКЛАДКА 2: АДМИН-ПАНЕЛЬ ==================== -->
     <div id="view-admin" class="tab-view">
         <div class="card">
             <button class="btn-sm" style="margin-bottom: 8px;" onclick="syncDatabase()">🔄 Обновить базу заявок и юзеров</button>
             <div style="font-size:12px; color:var(--hint-color); text-align:center;">
-                Нажмите кнопку выше, чтобы бот прислал свежий список из базы данных
+                Данные загружаются напрямую из бота. Если список не обновился — нажмите кнопку выше.
             </div>
         </div>
-
+​
         <div class="card">
             <h3>📩 Необработанные заявки (<span id="pending-count">0</span>)</h3>
             <div id="pending-list"></div>
         </div>
-
+​
         <div class="card">
             <h3>👥 Все пользователи (<span id="users-count">0</span>)</h3>
             <div id="users-list"></div>
         </div>
-
+​
         <div class="card">
             <h3>✉️ Написать лично / Рассылка</h3>
             <input type="number" id="pm-uid" placeholder="Telegram ID получателя (пусто = рассылка ВСЕМ)">
@@ -186,27 +186,45 @@
             <button onclick="sendAdminMessage()">Отправить сообщение</button>
         </div>
     </div>
-
+​
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
-
+​
         const ALLOWED_ADMINS = [1389964621];
         const IMGBB_API_KEY = "ВАШ_КЛЮЧ_IMGBB";
-
+​
+        // Публичный HTTPS-адрес HTTP API бота (main.py: API_HOST/API_PORT, прокинутый наружу).
+        // Например: "https://bot.illupiperl.ru" или "https://xxxx.trycloudflare.com"
+        // Если оставить пустым — приложение работает по-старому (sendData, вкладка закрывается).
+        const API_URL = "";
+​
+        const initData = tg.initData || "";
+        let apiMode = false; // true = работаем через API (вкладка НЕ закрывается)
+​
         const urlParams = new URLSearchParams(window.location.search);
         const currentUserId = tg.initDataUnsafe?.user?.id || 0;
-
+​
+        // В фоне проверяем, доступен ли API бота
+        const apiReady = (async () => {
+            if (!API_URL || !initData) return;
+            try {
+                const res = await fetch(API_URL + "/api/ping");
+                const json = await res.json();
+                if (json && json.ok) apiMode = true;
+            } catch (e) { apiMode = false; }
+        })();
+​
         let isAdmin = (
             urlParams.get('admin') === '1' ||
             urlParams.has('data') ||
             ALLOWED_ADMINS.includes(currentUserId)
         );
-
+​
         if (isAdmin) {
             enableAdminUI();
         }
-
+​
         let tapCount = 0;
         function secretTap() {
             tapCount++;
@@ -217,19 +235,19 @@
                 tapCount = 0;
             }
         }
-
+​
         function enableAdminUI() {
             document.getElementById('admin-tabs').style.display = 'flex';
-            loadAdminData();
+            refreshAdminData();
         }
-
+​
         function switchTab(tab, btn) {
             document.querySelectorAll('.tab-view').forEach(el => el.classList.remove('active'));
             document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
             document.getElementById('view-' + tab).classList.add('active');
             btn.classList.add('active');
         }
-
+​
         function decodeBase64Utf8(b64) {
             let clean = b64.split('#')[0].split('&')[0].trim();
             clean = clean.replace(/-/g, '+').replace(/_/g, '/');
@@ -241,106 +259,183 @@
             }
             return new TextDecoder('utf-8').decode(bytes);
         }
-
+​
         function escapeHtml(s) {
-            return String(s || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+            return String(s || "").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
         }
-
-        function loadAdminData() {
+​
+        // ============ РАБОТА С API БОТА (fetch — вкладка НЕ закрывается) ============
+​
+        async function apiFetch(path, body, method) {
+            const opts = {
+                method: method || (body ? "POST" : "GET"),
+                headers: { "X-Init-Data": initData }
+            };
+            if (body) {
+                opts.headers["Content-Type"] = "application/json";
+                opts.body = JSON.stringify(body);
+            }
+            const res = await fetch(API_URL + path, opts);
+            const json = await res.json().catch(() => null);
+            return { status: res.status, json };
+        }
+​
+        function haptic(type) {
+            try { tg.HapticFeedback.notificationOccurred(type || 'success'); } catch (e) {}
+        }
+​
+        // Загружает и рисует данные админ-панели (через API или фолбэком из URL)
+        async function refreshAdminData() {
+            await apiReady;
+            if (apiMode) {
+                try {
+                    const { status, json } = await apiFetch("/api/data");
+                    if (status === 403) return; // не админ
+                    if (json && json.ok) { renderAdminData(json.data); return; }
+                } catch (e) { /* сервер недоступен — фолбэк ниже */ }
+            }
+            loadAdminDataFromUrl();
+        }
+​
+        function renderAdminData(data) {
             const pendingEl = document.getElementById('pending-list');
             const usersEl = document.getElementById('users-list');
-
+            if (!data) return;
+​
+            const posts = data.p || [];
+            const users = data.u || [];
+​
+            document.getElementById('pending-count').innerText = posts.length;
+            document.getElementById('users-count').innerText = users.length;
+​
+            if (posts.length === 0) {
+                pendingEl.innerHTML = '<div style="font-size:13px; color:var(--hint-color)">Необработанных заявок нет! 🎉</div>';
+            } else {
+                pendingEl.innerHTML = posts.map(p => `
+                    <div class="item-box">
+                        <div class="meta">
+                            <span><b>#${p.id}</b> от ${escapeHtml(p.un)} (<code>${p.uid}</code>)</span>
+                            <span>${p.a ? '🕵️ Анон' : '✍️ Публично'} ${p.ph ? '🖼 Фото' : ''}</span>
+                        </div>
+                        <div style="font-size:14px; margin-bottom:8px; white-space:pre-wrap;">${escapeHtml(p.t || '(Только фото)')}</div>
+                        <div class="btn-grid">
+                            <button class="btn-sm btn-green" onclick="modPost(${p.id}, 'approve')">✅ Принять</button>
+                            <button class="btn-sm btn-gray" onclick="modPost(${p.id}, 'reject')">❌ Отклонить</button>
+                            <button class="btn-sm btn-orange" onclick="modPost(${p.id}, 'warn')">⚠️ Варн (+1)</button>
+                            <button class="btn-sm btn-red" onclick="modPost(${p.id}, 'ban')">🚫 Бан</button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+​
+            if (users.length === 0) {
+                usersEl.innerHTML = '<div style="font-size:13px; color:var(--hint-color)">Пользователей в базе пока нет.</div>';
+            } else {
+                usersEl.innerHTML = users.map(u => `
+                    <div class="item-box">
+                        <div class="meta">
+                            <span><b>${escapeHtml(u.fn)}</b> ${u.un ? '(@' + escapeHtml(u.un) + ')' : ''}</span>
+                            <span>ID: <code>${u.id}</code></span>
+                        </div>
+                        <div style="font-size:13px; margin-bottom:6px;">
+                            Статус: ${u.b ? '<b style="color:#ef4444">🚫 ЗАБАНЕН</b>' : '<b style="color:#10b981">Активен</b>'} | Варны: <b>${u.w}/3</b>
+                        </div>
+                        <div class="btn-grid">
+                            <button class="btn-sm btn-orange" onclick="modUser(${u.id}, 'warn')">⚠️ Выдать варн</button>
+                            ${u.b ? `<button class="btn-sm btn-green" onclick="modUser(${u.id}, 'unban')">✅ Разбанить</button>` : `<button class="btn-sm btn-red" onclick="modUser(${u.id}, 'ban')">🚫 Забанить</button>`}
+                        </div>
+                    </div>
+                `).join('');
+            }
+        }
+​
+        // Фолбэк: старый способ — данные, упакованные ботом в ссылку
+        function loadAdminDataFromUrl() {
             let rawB64 = urlParams.get('data');
             if (!rawB64 && window.location.hash.includes('data=')) {
                 rawB64 = window.location.hash.split('data=')[1];
             }
-
             if (!rawB64) {
-                pendingEl.innerHTML = '<div style="font-size:13px; color:var(--hint-color)">Нажмите «🔄 Обновить базу заявок и юзеров» выше, чтобы загрузить данные из бота.</div>';
-                usersEl.innerHTML = '<div style="font-size:13px; color:var(--hint-color)">Нажмите кнопку обновления выше.</div>';
+                document.getElementById('pending-list').innerHTML = '<div style="font-size:13px; color:var(--hint-color)">Не удалось загрузить данные из API. Нажмите «🔄 Обновить» — бот пришлёт новую ссылку.</div>';
+                document.getElementById('users-list').innerHTML = '<div style="font-size:13px; color:var(--hint-color)">Нажмите кнопку обновления выше.</div>';
                 return;
             }
-
             try {
-                const rawJson = decodeBase64Utf8(rawB64);
-                const data = JSON.parse(rawJson);
-                const posts = data.p || [];
-                const users = data.u || [];
-
-                document.getElementById('pending-count').innerText = posts.length;
-                document.getElementById('users-count').innerText = users.length;
-
-                if (posts.length === 0) {
-                    pendingEl.innerHTML = '<div style="font-size:13px; color:var(--hint-color)">Необработанных заявок нет! 🎉</div>';
-                } else {
-                    pendingEl.innerHTML = posts.map(p => `
-                        <div class="item-box">
-                            <div class="meta">
-                                <span><b>#${p.id}</b> от ${escapeHtml(p.un)} (<code>${p.uid}</code>)</span>
-                                <span>${p.a ? '🕵️ Анон' : '✍️ Публично'} ${p.ph ? '🖼 Фото' : ''}</span>
-                            </div>
-                            <div style="font-size:14px; margin-bottom:8px; white-space:pre-wrap;">${escapeHtml(p.t || '(Только фото)')}</div>
-                            <div class="btn-grid">
-                                <button class="btn-sm btn-green" onclick="modPost(${p.id}, 'approve')">✅ Принять</button>
-                                <button class="btn-sm btn-gray" onclick="modPost(${p.id}, 'reject')">❌ Отклонить</button>
-                                <button class="btn-sm btn-orange" onclick="modPost(${p.id}, 'warn')">⚠️ Варн (+1)</button>
-                                <button class="btn-sm btn-red" onclick="modPost(${p.id}, 'ban')">🚫 Бан</button>
-                            </div>
-                        </div>
-                    `).join('');
-                }
-
-                if (users.length === 0) {
-                    usersEl.innerHTML = '<div style="font-size:13px; color:var(--hint-color)">Пользователей в базе пока нет.</div>';
-                } else {
-                    usersEl.innerHTML = users.map(u => `
-                        <div class="item-box">
-                            <div class="meta">
-                                <span><b>${escapeHtml(u.fn)}</b> ${u.un ? '(@' + escapeHtml(u.un) + ')' : ''}</span>
-                                <span>ID: <code>${u.id}</code></span>
-                            </div>
-                            <div style="font-size:13px; margin-bottom:6px;">
-                                Статус: ${u.b ? '<b style="color:#ef4444">🚫 ЗАБАНЕН</b>' : '<b style="color:#10b981">Активен</b>'} | Варны: <b>${u.w}/3</b>
-                            </div>
-                            <div class="btn-grid">
-                                <button class="btn-sm btn-orange" onclick="modUser(${u.id}, 'warn')">⚠️ Выдать варн</button>
-                                ${u.b 
-                                    ? `<button class="btn-sm btn-green" onclick="modUser(${u.id}, 'unban')">✅ Разбанить</button>`
-                                    : `<button class="btn-sm btn-red" onclick="modUser(${u.id}, 'ban')">🚫 Забанить</button>`
-                                }
-                            </div>
-                        </div>
-                    `).join('');
-                }
+                renderAdminData(JSON.parse(decodeBase64Utf8(rawB64)));
             } catch (e) {
-                pendingEl.innerHTML = '<div style="font-size:13px; color:var(--hint-color)">Нажмите «🔄 Обновить базу заявок и юзеров» выше, чтобы обновить ссылку.</div>';
+                document.getElementById('pending-list').innerHTML = '<div style="font-size:13px; color:var(--hint-color)">Не удалось загрузить данные. Нажмите «🔄 Обновить» — бот пришлёт новую ссылку.</div>';
             }
         }
-
-        function syncDatabase() {
+​
+        // Кнопка «Обновить»: через API остаёмся в приложении, иначе фолбэк на sendData
+        async function syncDatabase() {
+            await apiReady;
+            if (apiMode) {
+                try {
+                    await refreshAdminData();
+                    haptic('success');
+                    return;
+                } catch (e) { /* фолбэк ниже */ }
+            }
             tg.sendData(JSON.stringify({ action: "sync" }));
         }
-
-        function modPost(postId, subAction) {
+​
+        async function modPost(postId, subAction) {
+            if (apiMode) {
+                try {
+                    const { json } = await apiFetch("/api/mod_post", { post_id: postId, sub_action: subAction });
+                    if (json && json.ok) {
+                        haptic('success');
+                        if (json.data) renderAdminData(json.data);
+                        return;
+                    }
+                    haptic('error');
+                    return tg.showAlert((json && json.error) || "Ошибка выполнения действия.");
+                } catch (e) { /* сервер недоступен — фолбэк ниже */ }
+            }
             tg.sendData(JSON.stringify({ action: "mod_post", post_id: postId, sub_action: subAction }));
         }
-
-        function modUser(targetId, subAction) {
+​
+        async function modUser(targetId, subAction) {
+            if (apiMode) {
+                try {
+                    const { json } = await apiFetch("/api/mod_user", { target_id: targetId, sub_action: subAction });
+                    if (json && json.ok) {
+                        haptic('success');
+                        if (json.data) renderAdminData(json.data);
+                        return;
+                    }
+                    haptic('error');
+                    return tg.showAlert((json && json.error) || "Ошибка выполнения действия.");
+                } catch (e) { /* сервер недоступен — фолбэк ниже */ }
+            }
             tg.sendData(JSON.stringify({ action: "mod_user", target_id: targetId, sub_action: subAction }));
         }
-
-        function sendAdminMessage() {
+​
+        async function sendAdminMessage() {
             const uid = document.getElementById('pm-uid').value.trim();
             const text = document.getElementById('bc-text').value.trim();
             if (!text) return tg.showAlert("Введите текст сообщения!");
-
-            if (uid) {
-                tg.sendData(JSON.stringify({ action: "pm", target_id: parseInt(uid), text: text }));
-            } else {
-                tg.sendData(JSON.stringify({ action: "broadcast", text: text }));
+​
+            if (apiMode) {
+                try {
+                    const path = uid ? "/api/pm" : "/api/broadcast";
+                    const body = uid ? { target_id: parseInt(uid), text } : { text };
+                    const { json } = await apiFetch(path, body);
+                    if (json && json.ok) {
+                        haptic('success');
+                        document.getElementById('bc-text').value = "";
+                        return tg.showAlert(json.msg || "✅ Отправлено!");
+                    }
+                    haptic('error');
+                    return tg.showAlert((json && json.error) || "Ошибка отправки.");
+                } catch (e) { /* сервер недоступен — фолбэк ниже */ }
             }
+            tg.sendData(JSON.stringify(uid
+                ? { action: "pm", target_id: parseInt(uid), text }
+                : { action: "broadcast", text }));
         }
-
+​
         function previewFile() {
             const file = document.getElementById('photo-input').files[0];
             if (file) {
@@ -348,25 +443,25 @@
                 document.getElementById('preview-wrap').style.display = 'block';
             }
         }
-
+​
         function clearPhoto() {
             document.getElementById('photo-input').value = "";
             document.getElementById('preview-wrap').style.display = 'none';
         }
-
+​
         async function sendPost() {
             const text = document.getElementById('post-text').value.trim();
             const isAnon = document.getElementById('anon-check').checked;
             const file = document.getElementById('photo-input').files[0];
-
+​
             if (!text && !file) {
                 return tg.showAlert("Напишите текст или прикрепите фотографию!");
             }
-
+​
             const btn = document.getElementById('submit-btn');
             btn.disabled = true;
             btn.innerText = "Отправка...";
-
+​
             let photoUrl = null;
             if (file) {
                 const formData = new FormData();
@@ -390,7 +485,28 @@
                     return tg.showAlert("Ошибка сети при загрузке картинки.");
                 }
             }
-
+​
+            // Через API приложение остаётся открытым
+            if (apiMode) {
+                try {
+                    const { json } = await apiFetch("/api/submit", {
+                        text: text, is_anon: isAnon, photo_url: photoUrl
+                    });
+                    btn.disabled = false;
+                    btn.innerText = "Отправить в предложку";
+                    if (json && json.ok) {
+                        haptic('success');
+                        document.getElementById('post-text').value = "";
+                        clearPhoto();
+                        return tg.showAlert(json.msg || "✅ Заявка отправлена!");
+                    }
+                    haptic('error');
+                    return tg.showAlert((json && json.msg) || "Ошибка отправки.");
+                } catch (e) {
+                    // Сервер недоступен — фолбэк на sendData (вкладка закроется, как раньше)
+                }
+            }
+​
             tg.sendData(JSON.stringify({
                 action: "submit",
                 text: text,
