@@ -23,31 +23,9 @@
             padding: 14px;
             padding-bottom: 40px;
         }
-        .header-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 12px;
-        }
-        h2 { margin: 0; font-size: 20px; user-select: none; cursor: pointer; }
+        h2 { margin: 0 0 12px 0; font-size: 20px; user-select: none; cursor: pointer; }
         h3 { margin: 0 0 10px 0; font-size: 16px; }
-
-        .api-badge {
-            font-size: 11px;
-            padding: 4px 8px;
-            border-radius: 12px;
-            background: rgba(128, 128, 128, 0.2);
-            color: var(--hint-color);
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            text-decoration: none;
-            border: 1px solid rgba(128, 128, 128, 0.25);
-        }
-        .api-badge.online { color: #10b981; border-color: rgba(16, 185, 129, 0.4); }
-        .api-badge.offline { color: #f59e0b; border-color: rgba(245, 158, 11, 0.4); }
-
+        
         .tabs {
             display: none;
             gap: 8px;
@@ -90,7 +68,7 @@
             outline: none;
             margin-bottom: 8px;
         }
-        textarea { min-height: 110px; resize: none; }
+        textarea { min-height: 120px; resize: vertical; }
         .file-label {
             display: block;
             margin: 8px 0;
@@ -125,73 +103,24 @@
         }
         button:active { transform: scale(0.98); }
         button:disabled { opacity: 0.6; cursor: default; }
-        .btn-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 6px;
-            margin-top: 8px;
-        }
-        .btn-sm { padding: 8px; font-size: 13px; border-radius: 8px; }
-        .btn-green { background: #10b981; color: #fff; }
-        .btn-red { background: #ef4444; color: #fff; }
-        .btn-orange { background: #f59e0b; color: #fff; }
-        .btn-gray { background: #64748b; color: #fff; }
-
-        .item-box {
-            background: var(--bg-color);
+        
+        .success-box {
+            display: none;
+            background: rgba(16, 185, 129, 0.15);
+            border: 1px solid #10b981;
+            color: #34d399;
+            padding: 12px;
             border-radius: 10px;
-            padding: 10px;
-            margin-bottom: 10px;
-            border: 1px solid rgba(128,128,128,0.15);
-            transition: opacity 0.25s ease, transform 0.25s ease;
-        }
-        .meta {
-            font-size: 12px;
-            color: var(--hint-color);
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 6px;
-        }
-
-        /* Плавающее уведомление (Toast) */
-        #toast {
-            position: fixed;
-            top: 14px;
-            left: 50%;
-            transform: translateX(-50%) translateY(-60px);
-            background: #10b981;
-            color: #ffffff;
-            padding: 10px 18px;
-            border-radius: 20px;
+            margin-bottom: 12px;
             font-size: 14px;
-            font-weight: 600;
-            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
-            opacity: 0;
-            pointer-events: none;
-            transition: transform 0.25s ease, opacity 0.25s ease;
-            z-index: 99999;
-            max-width: 90%;
+            font-weight: 500;
             text-align: center;
-        }
-        #toast.show {
-            opacity: 1;
-            transform: translateX(-50%) translateY(0);
-        }
-        #toast.error {
-            background: #ef4444;
         }
     </style>
 </head>
 <body>
 
-    <div id="toast">Уведомление</div>
-
-    <div class="header-row">
-        <h2 onclick="secretTap()">🤫 Подслушка 21 школы</h2>
-        <span class="api-badge" id="api-status-badge" onclick="configureApiUrl()" title="Нажмите, чтобы настроить адрес API">
-            ● Подключение...
-        </span>
-    </div>
+    <h2 onclick="secretTap()">🤫 Подслушка 21 школы</h2>
 
     <div class="tabs" id="admin-tabs">
         <button class="tab-btn active" id="btn-tab-user" onclick="switchTab('user', this)">✍️ Предложка</button>
@@ -201,6 +130,10 @@
     <!-- ==================== ВКЛАДКА 1: ПРЕДЛОЖКА ==================== -->
     <div id="view-user" class="tab-view active">
         <div class="card">
+            <div id="success-banner" class="success-box">
+                ✅ Ваша заявка успешно отправлена на модерацию!
+            </div>
+
             <textarea id="post-text" placeholder="Напиши свою историю, сплетню или вопрос..."></textarea>
 
             <label class="file-label">
@@ -210,7 +143,7 @@
 
             <div id="preview-wrap">
                 <img id="preview" alt="Предпросмотр">
-                <button type="button" class="btn-sm btn-red" style="margin-top:6px;" onclick="clearPhoto()">🗑 Удалить фото</button>
+                <button type="button" style="background:#ef4444; padding:8px; font-size:13px; margin-top:6px;" onclick="clearPhoto()">🗑 Удалить фото</button>
             </div>
 
             <div class="toggle-row">
@@ -221,30 +154,15 @@
         </div>
     </div>
 
-    <!-- ==================== ВКЛАДКА 2: АДМИН-ПАНЕЛЬ ==================== -->
+    <!-- ==================== ВКЛАДКА 2: АДМИН-ПАНЕЛЬ (РАССЫЛКА) ==================== -->
     <div id="view-admin" class="tab-view">
         <div class="card">
-            <button class="btn-sm" id="sync-btn" style="margin-bottom: 8px;" onclick="syncDatabase()">🔄 Обновить базу заявок и юзеров</button>
-            <div style="font-size:12px; color:var(--hint-color); text-align:center;">
-                Данные обновляются онлайн прямо в приложении без закрытия окна!
-            </div>
-        </div>
-
-        <div class="card">
-            <h3>📩 Необработанные заявки (<span id="pending-count">0</span>)</h3>
-            <div id="pending-list"></div>
-        </div>
-
-        <div class="card">
-            <h3>👥 Все пользователи (<span id="users-count">0</span>)</h3>
-            <div id="users-list"></div>
-        </div>
-
-        <div class="card">
-            <h3>✉️ Написать лично / Рассылка</h3>
-            <input type="number" id="pm-uid" placeholder="Telegram ID получателя (пусто = рассылка ВСЕМ)">
-            <textarea id="bc-text" placeholder="Введите текст сообщения..." style="min-height: 75px;"></textarea>
-            <button onclick="sendAdminMessage()">Отправить сообщение</button>
+            <h3>📢 Рассылка в канал / объявление</h3>
+            <p style="font-size:13px; color:var(--hint-color); margin-top:0;">
+                Отправляет объявление напрямую в канал подписчикам без закрытия окна.
+            </p>
+            <textarea id="bc-text" placeholder="Введите текст объявления..."></textarea>
+            <button id="bc-btn" onclick="sendBroadcast()">Опубликовать объявление</button>
         </div>
     </div>
 
@@ -255,105 +173,18 @@
             tg.expand();
         }
 
-        const ALLOWED_ADMINS = [1389964621];
+        // ==================== КОНФИГУРАЦИЯ БОТА ====================
+        const BOT_TOKEN = "8623552053:AAFLZbvTvY-58Trd1eYQGV8zp4Zrp8DI-7s";
+        const MOD_GROUP_ID = -1004427935626;  // Группа модерации
+        const CHANNEL_ID = -1004498876602;    // Канал публикации
+        const ALLOWED_ADMINS = [1389964621];  // ID администратора
         const IMGBB_API_KEY = "ВАШ_КЛЮЧ_IMGBB";
 
         const urlParams = new URLSearchParams(window.location.search);
         const currentUserId = tg?.initDataUnsafe?.user?.id || 0;
 
-        // ==================== ОПРЕДЕЛЕНИЕ АДРЕСА API БОТА ====================
-        // Чтобы окно Mini App НЕ закрывалось, мы шлем запросы по HTTP (fetch), а не через tg.sendData().
-        // Порядок поиска адреса:
-        // 1. Параметр ?api= в URL (например: ?api=https://my-tunnel.trycloudflare.com)
-        // 2. Ранее сохраненный адрес в браузере (localStorage)
-        // 3. Если сайт запущен на том же сервере/туннеле, что и бот — текущий домен (window.location.origin)
-        let savedApi = localStorage.getItem('school21_api_url') || '';
-        let isGithub = window.location.hostname.includes('github.io');
-        let API_BASE_URL = urlParams.get('api') || savedApi || (isGithub ? '' : window.location.origin);
-        if (API_BASE_URL) API_BASE_URL = API_BASE_URL.replace(/\/+$/, '');
-
-        // Проверка статуса API
-        async function checkApiHealth() {
-            const badge = document.getElementById('api-status-badge');
-            if (!API_BASE_URL && isGithub) {
-                badge.className = 'api-badge offline';
-                badge.innerText = '⚙️ Настроить API';
-                return false;
-            }
-            try {
-                const res = await fetch((API_BASE_URL || '') + '/api/ping', {
-                    headers: { 'X-Telegram-Init-Data': tg?.initData || '' }
-                });
-                const j = await res.json();
-                if (j.ok) {
-                    badge.className = 'api-badge online';
-                    badge.innerText = '● Онлайн';
-                    return true;
-                }
-            } catch (e) {
-                badge.className = 'api-badge offline';
-                badge.innerText = '● Офлайн';
-                return false;
-            }
-        }
-
-        function configureApiUrl() {
-            const current = API_BASE_URL || (isGithub ? 'https://...' : window.location.origin);
-            const promptVal = prompt("Введите публичный HTTPS-адрес сервера бота (например из ngrok или Cloudflare Tunnel):
-
-Оставьте пустым для автоопределения:", API_BASE_URL);
-            if (promptVal !== null) {
-                API_BASE_URL = promptVal.trim().replace(/\/+$/, '');
-                localStorage.setItem('school21_api_url', API_BASE_URL);
-                showToast("Адрес API сохранен: " + (API_BASE_URL || "Авто"));
-                checkApiHealth();
-            }
-        }
-
-        // ==================== ВСПЛЫВАЮЩИЕ УВЕДОМЛЕНИЯ ====================
-        let toastTimer = null;
-        function showToast(text, isError = false) {
-            const el = document.getElementById('toast');
-            el.innerText = text;
-            el.className = isError ? 'show error' : 'show';
-            clearTimeout(toastTimer);
-            toastTimer = setTimeout(() => {
-                el.className = '';
-            }, 2600);
-        }
-
-        // ==================== API ЗАПРОСЫ ====================
-        async function apiCall(endpoint, method = 'POST', body = null) {
-            const url = (API_BASE_URL || '') + endpoint;
-            const headers = {
-                'Content-Type': 'application/json',
-                'X-Telegram-Init-Data': tg?.initData || '',
-                'X-Init-Data': tg?.initData || '',
-                'X-Admin-Secret': 'school21admin'
-            };
-
-            let resp;
-            try {
-                resp = await fetch(url, {
-                    method: method,
-                    headers: headers,
-                    body: body ? JSON.stringify(body) : undefined
-                });
-            } catch (networkError) {
-                throw new Error("Не удалось подключиться к серверу бота. Проверьте, что бот запущен!");
-            }
-
-            const data = await resp.json().catch(() => ({}));
-            if (!resp.ok || data.ok === false) {
-                throw new Error(data.error || ("Ошибка " + resp.status));
-            }
-            return data;
-        }
-
-        // ==================== АДМИНКА ====================
         let isAdmin = (
             urlParams.get('admin') === '1' ||
-            urlParams.has('data') ||
             ALLOWED_ADMINS.includes(currentUserId)
         );
 
@@ -369,13 +200,11 @@
                 enableAdminUI();
                 switchTab('admin', document.getElementById('btn-tab-admin'));
                 tapCount = 0;
-                showToast("🛡️ Режим администратора активирован!");
             }
         }
 
         function enableAdminUI() {
             document.getElementById('admin-tabs').style.display = 'flex';
-            loadAdminData();
         }
 
         function switchTab(tab, btn) {
@@ -383,189 +212,6 @@
             document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
             document.getElementById('view-' + tab).classList.add('active');
             btn.classList.add('active');
-        }
-
-        function decodeBase64Utf8(b64) {
-            let clean = b64.split('#')[0].split('&')[0].trim();
-            clean = clean.replace(/-/g, '+').replace(/_/g, '/');
-            while (clean.length % 4) clean += '=';
-            const binString = atob(clean);
-            const bytes = new Uint8Array(binString.length);
-            for (let i = 0; i < binString.length; i++) {
-                bytes[i] = binString.charCodeAt(i);
-            }
-            return new TextDecoder('utf-8').decode(bytes);
-        }
-
-        function escapeHtml(s) {
-            return String(s || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-        }
-
-        function renderAdminData(data) {
-            const pendingEl = document.getElementById('pending-list');
-            const usersEl = document.getElementById('users-list');
-
-            const posts = data.p || [];
-            const users = data.u || [];
-
-            document.getElementById('pending-count').innerText = posts.length;
-            document.getElementById('users-count').innerText = users.length;
-
-            if (posts.length === 0) {
-                pendingEl.innerHTML = '<div style="font-size:13px; color:var(--hint-color)">Необработанных заявок нет! 🎉</div>';
-            } else {
-                pendingEl.innerHTML = posts.map(p => `
-                    <div class="item-box" id="post-card-${p.id}">
-                        <div class="meta">
-                            <span><b>#${p.id}</b> от ${escapeHtml(p.un)} (<code>${p.uid}</code>)</span>
-                            <span>${p.a ? '🕵️ Анон' : '✍️ Публично'} ${p.ph ? '🖼 Фото' : ''}</span>
-                        </div>
-                        <div style="font-size:14px; margin-bottom:8px; white-space:pre-wrap;">${escapeHtml(p.t || '(Только фото)')}</div>
-                        <div class="btn-grid">
-                            <button class="btn-sm btn-green" onclick="modPost(${p.id}, 'approve')">✅ Принять</button>
-                            <button class="btn-sm btn-gray" onclick="modPost(${p.id}, 'reject')">❌ Отклонить</button>
-                            <button class="btn-sm btn-orange" onclick="modPost(${p.id}, 'warn')">⚠️ Варн (+1)</button>
-                            <button class="btn-sm btn-red" onclick="modPost(${p.id}, 'ban')">🚫 Бан</button>
-                        </div>
-                    </div>
-                `).join('');
-            }
-
-            if (users.length === 0) {
-                usersEl.innerHTML = '<div style="font-size:13px; color:var(--hint-color)">Пользователей в базе пока нет.</div>';
-            } else {
-                usersEl.innerHTML = users.map(u => `
-                    <div class="item-box" id="user-card-${u.id}">
-                        <div class="meta">
-                            <span><b>${escapeHtml(u.fn)}</b> ${u.un ? '(@' + escapeHtml(u.un) + ')' : ''}</span>
-                            <span>ID: <code>${u.id}</code></span>
-                        </div>
-                        <div style="font-size:13px; margin-bottom:6px;">
-                            Статус: ${u.b ? '<b style="color:#ef4444">🚫 ЗАБАНЕН</b>' : '<b style="color:#10b981">Активен</b>'} | Варны: <b>${u.w}/3</b>
-                        </div>
-                        <div class="btn-grid">
-                            <button class="btn-sm btn-orange" onclick="modUser(${u.id}, 'warn')">⚠️ Выдать варн</button>
-                            ${u.b 
-                                ? `<button class="btn-sm btn-green" onclick="modUser(${u.id}, 'unban')">✅ Разбанить</button>`
-                                : `<button class="btn-sm btn-red" onclick="modUser(${u.id}, 'ban')">🚫 Забанить</button>`
-                            }
-                        </div>
-                    </div>
-                `).join('');
-            }
-        }
-
-        async function loadAdminData() {
-            // 1. Быстрый показ из параметров URL (если есть data=)
-            let rawB64 = urlParams.get('data');
-            if (!rawB64 && window.location.hash.includes('data=')) {
-                rawB64 = window.location.hash.split('data=')[1];
-            }
-            if (rawB64) {
-                try {
-                    const data = JSON.parse(decodeBase64Utf8(rawB64));
-                    renderAdminData(data);
-                } catch (e) {
-                    console.error("Ошибка парсинга data:", e);
-                }
-            }
-
-            // 2. В фоновом режиме загружаем актуальные данные из API (чтобы не требовался перезапуск)
-            try {
-                const res = await apiCall('/api/data', 'GET');
-                if (res && res.data) {
-                    renderAdminData(res.data);
-                }
-            } catch (e) {
-                if (!rawB64) {
-                    document.getElementById('pending-list').innerHTML = '<div style="font-size:13px; color:var(--hint-color)">Нажмите «🔄 Обновить базу заявок и юзеров» выше.</div>';
-                    document.getElementById('users-list').innerHTML = '<div style="font-size:13px; color:var(--hint-color)">Нажмите кнопку обновления выше.</div>';
-                }
-            }
-        }
-
-        // ==================== ДЕЙСТВИЯ (БЕЗ ЗАКРЫТИЯ ОКНА) ====================
-        async function syncDatabase() {
-            const btn = document.getElementById('sync-btn');
-            if (btn) btn.innerText = "🔄 Загрузка данных...";
-            try {
-                const res = await apiCall('/api/data', 'GET');
-                if (res && res.data) {
-                    renderAdminData(res.data);
-                    showToast("✅ База данных обновлена!");
-                }
-            } catch (e) {
-                showToast(e.message, true);
-                if (tg) tg.showAlert("Ошибка связи с ботом: " + e.message);
-            } finally {
-                if (btn) btn.innerText = "🔄 Обновить базу заявок и юзеров";
-            }
-        }
-
-        async function modPost(postId, subAction) {
-            try {
-                const res = await apiCall('/api/mod_post', 'POST', { post_id: postId, sub_action: subAction });
-                showToast(res.msg || "Заявка обработана!");
-
-                // Анимация исчезновения карточки из списка
-                const el = document.getElementById('post-card-' + postId);
-                if (el) {
-                    el.style.opacity = '0';
-                    el.style.transform = 'scale(0.95)';
-                    setTimeout(() => {
-                        el.remove();
-                        const countEl = document.getElementById('pending-count');
-                        let count = parseInt(countEl.innerText) || 1;
-                        count = Math.max(0, count - 1);
-                        countEl.innerText = count;
-                        if (count === 0) {
-                            document.getElementById('pending-list').innerHTML = '<div style="font-size:13px; color:var(--hint-color)">Необработанных заявок нет! 🎉</div>';
-                        }
-                    }, 250);
-                }
-
-                if (res.data) renderAdminData(res.data);
-            } catch (e) {
-                showToast(e.message, true);
-                if (tg) tg.showAlert("Ошибка: " + e.message);
-            }
-        }
-
-        async function modUser(targetId, subAction) {
-            try {
-                const res = await apiCall('/api/mod_user', 'POST', { target_id: targetId, sub_action: subAction });
-                showToast(res.msg || "Пользователь обновлен!");
-                if (res.data) {
-                    renderAdminData(res.data);
-                } else {
-                    syncDatabase();
-                }
-            } catch (e) {
-                showToast(e.message, true);
-                if (tg) tg.showAlert("Ошибка: " + e.message);
-            }
-        }
-
-        async function sendAdminMessage() {
-            const uid = document.getElementById('pm-uid').value.trim();
-            const text = document.getElementById('bc-text').value.trim();
-            if (!text) return tg ? tg.showAlert("Введите текст сообщения!") : alert("Введите текст сообщения!");
-
-            try {
-                if (uid) {
-                    const res = await apiCall('/api/pm', 'POST', { target_id: parseInt(uid), text: text });
-                    showToast(res.msg || "✅ Личное сообщение отправлено!");
-                    if (tg) tg.showAlert(res.msg || "✅ Отправлено!");
-                } else {
-                    const res = await apiCall('/api/broadcast', 'POST', { text: text });
-                    showToast(res.msg || "✅ Рассылка завершена!");
-                    if (tg) tg.showAlert(res.msg || "✅ Рассылка завершена!");
-                }
-                document.getElementById('bc-text').value = "";
-            } catch (e) {
-                showToast(e.message, true);
-                if (tg) tg.showAlert("Ошибка: " + e.message);
-            }
         }
 
         function previewFile() {
@@ -581,6 +227,14 @@
             document.getElementById('preview-wrap').style.display = 'none';
         }
 
+        function escapeHtml(s) {
+            return String(s || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+        }
+
+        // ==================== ОТПРАВКА БЕЗ ЗАКРЫТИЯ ВКЛАДКИ ====================
+        // Отправка идёт напрямую в Telegram Bot API по HTTPS.
+        // Поэтому вкладка Mini App НЕ закрывается (в отличие от tg.sendData),
+        // а вам не нужно запускать никаких серверов на портах 8080 или туннелей!
         async function sendPost() {
             const text = document.getElementById('post-text').value.trim();
             const isAnon = document.getElementById('anon-check').checked;
@@ -596,56 +250,104 @@
 
             let photoUrl = null;
             if (file) {
-                const formData = new FormData();
-                formData.append("image", file);
-                try {
-                    const res = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
-                        method: "POST",
-                        body: formData
-                    });
-                    const json = await res.json();
-                    if (json.success) {
-                        photoUrl = json.data.url;
-                    } else {
-                        btn.disabled = false;
-                        btn.innerText = "Отправить в предложку";
-                        return tg ? tg.showAlert("Ошибка загрузки фото: проверьте IMGBB_API_KEY!") : alert("Ошибка загрузки фото!");
+                // Если указан ключ ImgBB — грузим через него
+                if (IMGBB_API_KEY && IMGBB_API_KEY !== "ВАШ_КЛЮЧ_IMGBB") {
+                    const formData = new FormData();
+                    formData.append("image", file);
+                    try {
+                        const res = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
+                            method: "POST",
+                            body: formData
+                        });
+                        const json = await res.json();
+                        if (json.success) {
+                            photoUrl = json.data.url;
+                        }
+                    } catch (e) {
+                        console.error("Ошибка ImgBB:", e);
                     }
-                } catch (e) {
-                    btn.disabled = false;
-                    btn.innerText = "Отправить в предложку";
-                    return tg ? tg.showAlert("Ошибка сети при загрузке картинки.") : alert("Ошибка сети при загрузке картинки.");
                 }
             }
 
-            try {
-                const payload = {
-                    text: text,
-                    is_anon: isAnon,
-                    photo_url: photoUrl,
-                    user_id: currentUserId,
-                    username: tg?.initDataUnsafe?.user?.username || "",
-                    full_name: (tg?.initDataUnsafe?.user?.first_name || "") + " " + (tg?.initDataUnsafe?.user?.last_name || "")
-                };
+            // Формируем карточку для группы модерации
+            const user = tg?.initDataUnsafe?.user || {};
+            const uid = user.id || currentUserId || 0;
+            const username = user.username ? `@${user.username}` : (user.first_name || "Ученик");
+            const anonStr = isAnon ? "Анонимно 🕵️" : `Публично (${escapeHtml(username)})`;
+            const textBlock = text ? escapeHtml(text) : "<i>(Без текста, только фото)</i>";
 
-                const res = await apiCall('/api/submit', 'POST', payload);
-                document.getElementById('post-text').value = "";
-                clearPhoto();
-                showToast("✅ Заявка отправлена модераторам!");
-                if (tg) {
-                    tg.showAlert(res.msg || "✅ Ваша заявка успешно отправлена на модерацию!");
+            const modCaption = `📩 <b>Новая заявка из Mini App</b>\n` +
+                               `👤 <b>Автор:</b> ${escapeHtml(username)} [<code>${uid}</code>]\n` +
+                               `👁 <b>Режим:</b> ${anonStr}\n\n` +
+                               `📝 <b>Текст:</b>\n${textBlock}`;
+
+            const modKeyboard = {
+                inline_keyboard: [
+                    [
+                        { text: "✅ Одобрить", callback_data: `mod:approve:0` },
+                        { text: "❌ Отклонить", callback_data: `mod:reject:0` }
+                    ],
+                    [
+                        { text: "⚠️ Варн (+1)", callback_data: `mod:warn:0:${uid}` },
+                        { text: "🚫 Бан", callback_data: `mod:ban:0:${uid}` }
+                    ]
+                ]
+            };
+
+            try {
+                let apiUrl;
+                let payload;
+
+                if (photoUrl) {
+                    apiUrl = `https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`;
+                    payload = {
+                        chat_id: MOD_GROUP_ID,
+                        photo: photoUrl,
+                        caption: modCaption,
+                        parse_mode: "HTML",
+                        reply_markup: modKeyboard
+                    };
+                } else {
+                    apiUrl = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
+                    payload = {
+                        chat_id: MOD_GROUP_ID,
+                        text: modCaption,
+                        parse_mode: "HTML",
+                        reply_markup: modKeyboard
+                    };
                 }
-            } catch (e) {
-                // Если сервер недоступен, предлагаем резервную отправку через Telegram-сообщение (которое закроет окно)
-                const useFallback = confirm("Сервер бота недоступен по сети (" + e.message + ").\n\nОтправить заявку через прямое Telegram-сообщение?\n(Внимание: при отправке через Telegram клиент закроет окно приложения).");
-                if (useFallback && tg) {
+
+                const resp = await fetch(apiUrl, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+                const resJson = await resp.json();
+
+                if (resJson.ok) {
+                    // Очищаем форму и показываем баннер успеха БЕЗ закрытия вкладки
+                    document.getElementById('post-text').value = "";
+                    clearPhoto();
+                    const banner = document.getElementById('success-banner');
+                    banner.style.display = "block";
+                    setTimeout(() => { banner.style.display = "none"; }, 4000);
+
+                    if (tg) tg.showAlert("✅ Ваша заявка успешно отправлена на модерацию!");
+                } else {
+                    throw new Error(resJson.description || "Ошибка отправки в Telegram");
+                }
+            } catch (err) {
+                // Если прямая отправка не удалась (например оффлайн), отправляем стандартным sendData как резерв
+                console.warn("Резервный путь:", err);
+                if (tg) {
                     tg.sendData(JSON.stringify({
                         action: "submit",
                         text: text,
                         is_anon: isAnon,
                         photo_url: photoUrl
                     }));
-                    return;
+                } else {
+                    alert("Ошибка отправки: " + err.message);
                 }
             } finally {
                 btn.disabled = false;
@@ -653,8 +355,39 @@
             }
         }
 
-        // Запуск проверки связи с сервером
-        checkApiHealth();
+        // ==================== РАССЫЛКА ИЗ АДМИНКИ ====================
+        async function sendBroadcast() {
+            const text = document.getElementById('bc-text').value.trim();
+            if (!text) return tg ? tg.showAlert("Введите текст объявления!") : alert("Введите текст!");
+
+            const btn = document.getElementById('bc-btn');
+            btn.disabled = true;
+            btn.innerText = "Публикация...";
+
+            try {
+                const resp = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        chat_id: CHANNEL_ID,
+                        text: `📢 <b>Объявление:</b>\n\n${escapeHtml(text)}`,
+                        parse_mode: "HTML"
+                    })
+                });
+                const res = await resp.json();
+                if (res.ok) {
+                    document.getElementById('bc-text').value = "";
+                    if (tg) tg.showAlert("✅ Объявление опубликовано в канале!");
+                } else {
+                    throw new Error(res.description || "Ошибка отправки");
+                }
+            } catch (e) {
+                if (tg) tg.showAlert("Ошибка: " + e.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "Опубликовать объявление";
+            }
+        }
     </script>
 </body>
 </html>
