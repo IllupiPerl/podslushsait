@@ -411,20 +411,20 @@
                 <h3>👥 Пользователи бота (<span id="users-count">0</span>)</h3>
             </div>
             <div id="users-list" style="max-height: 280px; overflow-y: auto;">
-                <div class="empty-state">Нет данных о пользователях</div>
+                <div class="empty-state">Список пользователей пока пуст</div>
             </div>
         </div>
 
     </div>
 
     <script>
+        // ==================== ИНИЦИАЛИЗАЦИЯ И КОНФИГУРАЦИЯ ====================
         const tg = window.Telegram?.WebApp;
         if (tg) {
             tg.ready();
             tg.expand();
         }
 
-        // ==================== КОНФИГУРАЦИЯ БОТА ====================
         const BOT_TOKEN = "8623552053:AAFLZbvTvY-58Trd1eYQGV8zp4Zrp8DI-7s";
         const MOD_GROUP_ID = -1004427935626;  // ID группы модерации
         const CHANNEL_ID = -1004498876602;    // ID канала "Подслушка 21 школы"
@@ -432,6 +432,7 @@
         const IMGBB_API_KEY = "ВАШ_КЛЮЧ_IMGBB";
 
         const STORAGE_RESOLVED = 'podslushka_resolved_posts';
+        const STORAGE_CACHED_DATA = 'podslushka_cached_admin_data';
 
         const urlParams = new URLSearchParams(window.location.search);
         const currentUserId = tg?.initDataUnsafe?.user?.id || 0;
@@ -441,43 +442,14 @@
             ALLOWED_ADMINS.includes(currentUserId)
         );
 
-        if (isAdmin) {
-            enableAdminUI();
-        }
-
-        // Секретный 5-кратный клик по заголовку
+        let currentAdminData = null;
+        let toastTimer = null;
         let tapCount = 0;
-        function secretTap() {
-            tapCount++;
-            if (tapCount >= 5) {
-                isAdmin = true;
-                enableAdminUI();
-                showToast("🛡️ Режим администратора активирован!");
-                switchTab('admin', document.getElementById('btn-tab-admin'));
-                tapCount = 0;
-            }
-        }
-
-        function enableAdminUI() {
-            document.getElementById('admin-tabs').style.display = 'flex';
-            const pill = document.getElementById('role-pill');
-            pill.innerText = "🛡️ Админ";
-            pill.className = "role-badge admin";
-            loadAdminData();
-        }
-
-        function switchTab(tab, btn) {
-            document.querySelectorAll('.tab-view').forEach(el => el.classList.remove('active'));
-            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
-            document.getElementById('view-' + tab).classList.add('active');
-            if (btn) btn.classList.add('active');
-            if (tab === 'admin') loadAdminData();
-        }
 
         // ==================== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ====================
-        let toastTimer = null;
         function showToast(text, isError = false) {
             const el = document.getElementById('toast');
+            if (!el) return;
             el.innerText = text;
             el.className = isError ? 'show error' : 'show';
             clearTimeout(toastTimer);
@@ -507,6 +479,26 @@
             document.getElementById('pm-text').focus();
         }
 
+        function secretTap() {
+            tapCount++;
+            if (tapCount >= 5) {
+                isAdmin = true;
+                enableAdminUI();
+                showToast("🛡️ Режим администратора активирован!");
+                switchTab('admin', document.getElementById('btn-tab-admin'));
+                tapCount = 0;
+            }
+        }
+
+        function switchTab(tab, btn) {
+            document.querySelectorAll('.tab-view').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            const targetView = document.getElementById('view-' + tab);
+            if (targetView) targetView.classList.add('active');
+            if (btn) btn.classList.add('active');
+            if (tab === 'admin') loadAdminData();
+        }
+
         // ==================== РАБОТА С ЛОКАЛЬНЫМ ХРАНИЛИЩЕМ ====================
         function getResolvedPosts() {
             try {
@@ -520,44 +512,56 @@
             const list = getResolvedPosts();
             if (!list.some(item => item.id === id)) {
                 list.push({ id: id, decision: decision, time: Date.now() });
-                localStorage.setItem(STORAGE_RESOLVED, JSON.stringify(list));
+                try {
+                    localStorage.setItem(STORAGE_RESOLVED, JSON.stringify(list));
+                } catch (e) {}
             }
         }
 
-        // Декодирование параметров admin data из URL
+        // Декодирование параметров admin data из URL или кэша
         function decodeAdminData() {
             const dataParam = urlParams.get('data');
-            if (!dataParam) return null;
-            try {
-                let b64 = dataParam.replace(/-/g, '+').replace(/_/g, '/');
-                while (b64.length % 4) b64 += '=';
-                const binary = atob(b64);
-                const bytes = new Uint8Array(binary.length);
-                for (let i = 0; i < binary.length; i++) {
-                    bytes[i] = binary.charCodeAt(i);
+            if (dataParam) {
+                try {
+                    let b64 = dataParam.replace(/-/g, '+').replace(/_/g, '/');
+                    while (b64.length % 4) b64 += '=';
+                    const binary = atob(b64);
+                    const bytes = new Uint8Array(binary.length);
+                    for (let i = 0; i < binary.length; i++) {
+                        bytes[i] = binary.charCodeAt(i);
+                    }
+                    const jsonStr = new TextDecoder('utf-8').decode(bytes);
+                    const parsed = JSON.parse(jsonStr);
+                    try {
+                        localStorage.setItem(STORAGE_CACHED_DATA, jsonStr);
+                    } catch (e) {}
+                    return parsed;
+                } catch (e) {
+                    console.error("Ошибка парсинга data из URL:", e);
                 }
-                const jsonStr = new TextDecoder('utf-8').decode(bytes);
-                return JSON.parse(jsonStr);
-            } catch (e) {
-                console.error("Ошибка парсинга data:", e);
-                return null;
             }
+
+            // Если в URL нет data, пробуем загрузить из кэша браузера
+            try {
+                const cached = localStorage.getItem(STORAGE_CACHED_DATA);
+                if (cached) return JSON.parse(cached);
+            } catch (e) {}
+
+            return null;
         }
 
         // ==================== ЗАГРУЗКА И ОТОБРАЖЕНИЕ АДМИН-ДАННЫХ ====================
-        let currentAdminData = null;
-
         function loadAdminData() {
             currentAdminData = decodeAdminData();
             const resolvedList = getResolvedPosts();
             const resolvedIds = resolvedList.map(r => r.id);
 
-            let posts = (currentAdminData && currentAdminData.p) ? currentAdminData.p : [];
+            let posts = (currentAdminData && Array.isArray(currentAdminData.p)) ? currentAdminData.p : [];
             // Фильтруем заявки, которые админ уже обработал в этой сессии
             posts = posts.filter(p => !resolvedIds.includes(p.id));
 
             renderPendingList(posts);
-            renderUsersList((currentAdminData && currentAdminData.u) ? currentAdminData.u : []);
+            renderUsersList((currentAdminData && Array.isArray(currentAdminData.u)) ? currentAdminData.u : []);
         }
 
         function renderPendingList(posts) {
@@ -565,16 +569,17 @@
             const countEl = document.getElementById('pending-count');
             const badgeEl = document.getElementById('admin-badge-count');
 
-            countEl.innerText = posts.length;
-            badgeEl.innerText = posts.length;
+            if (countEl) countEl.innerText = posts.length;
+            if (badgeEl) badgeEl.innerText = posts.length;
 
-            if (posts.length === 0) {
+            if (!posts || posts.length === 0) {
                 wrap.innerHTML = `
                     <div class="empty-state">
                         🎉 Все заявки обработаны! Новых пока нет.<br>
-                        <small style="color:var(--hint-color); display:block; margin-top:6px;">
-                            Чтобы запросить свежие заявки из базы бота, нажмите «Сохранить в базу бота» или откройте бота.
+                        <small style="color:var(--hint-color); display:block; margin-top:8px;">
+                            Чтобы запросить свежие заявки из базы бота, нажмите кнопку ниже:
                         </small>
+                        <button class="btn-outline" style="margin-top:10px; width:auto;" onclick="syncWithBotDb()">🔄 Обновить из бота</button>
                     </div>
                 `;
                 return;
@@ -607,19 +612,19 @@
                         ${photoHtml}
 
                         <div class="btn-grid-2">
-                            <button class="btn-green" onclick="approvePost(${p.id}, ${p.uid}, '${escapeHtml(p.un || '')}', ${isAnon})">
+                            <button class="btn-green" onclick="approvePost(${p.id})">
                                 ✅ Принять
                             </button>
-                            <button class="btn-red" onclick="rejectPost(${p.id}, ${p.uid})">
+                            <button class="btn-red" onclick="rejectPost(${p.id})">
                                 ❌ Отклонить
                             </button>
                         </div>
 
                         <div class="btn-grid-4">
-                            <button class="btn-mini btn-orange" onclick="warnAuthor(${p.id}, ${p.uid})">
+                            <button class="btn-mini btn-orange" onclick="warnAuthor(${p.id})">
                                 ⚠️ Варн (+1)
                             </button>
-                            <button class="btn-mini btn-red" onclick="banAuthor(${p.id}, ${p.uid})">
+                            <button class="btn-mini btn-red" onclick="banAuthor(${p.id})">
                                 🚫 Бан
                             </button>
                         </div>
@@ -631,9 +636,9 @@
         function renderUsersList(users) {
             const wrap = document.getElementById('users-list');
             const countEl = document.getElementById('users-count');
-            countEl.innerText = users.length;
+            if (countEl) countEl.innerText = users.length;
 
-            if (users.length === 0) {
+            if (!users || users.length === 0) {
                 wrap.innerHTML = '<div class="empty-state">Список пользователей пока пуст</div>';
                 return;
             }
@@ -642,7 +647,7 @@
                 const isBanned = !!u.b;
                 const warns = u.w || 0;
                 const name = escapeHtml(u.fn || u.un || `ID ${u.id}`);
-                const uname = u.un ? `@${u.un}` : `ID ${u.id}`;
+                const uname = u.un ? `@${escapeHtml(u.un)}` : `ID ${u.id}`;
 
                 return `
                     <div class="user-row">
@@ -664,20 +669,25 @@
         }
 
         // ==================== МОДЕРАЦИЯ ЗАЯВОК (БЕЗ ЗАКРЫТИЯ ОКНА) ====================
-        // 1. Одобрение заявки
-        async function approvePost(id, uid, authorName, isAnon) {
+        async function approvePost(id) {
+            const post = currentAdminData?.p?.find(x => x.id === id);
+            if (!post) {
+                return showToast("Заявка не найдена в списке", true);
+            }
+
+            const uid = post.uid || 0;
+            const authorName = post.un || "Ученик";
+            const isAnon = !!post.a;
+            const text = post.t || "";
+            const photo = post.ph || null;
+
             const card = document.getElementById(`post-card-${id}`);
             const buttons = card ? card.querySelectorAll('button') : [];
             buttons.forEach(b => b.disabled = true);
 
             showToast(`Публикация заявки #${id}...`);
 
-            // Ищем данные поста
-            const post = currentAdminData?.p?.find(x => x.id === id);
-            const text = post ? post.t : "";
-            const photo = post ? post.ph : null;
-
-            const sign = isAnon ? "🕵️ <i>Анонимно</i>" : `✍️ <i>Автор: ${escapeHtml(authorName || 'Ученик')}</i>`;
+            const sign = isAnon ? "🕵️ <i>Анонимно</i>" : `✍️ <i>Автор: ${escapeHtml(authorName)}</i>`;
             const channelCaption = text ? `${escapeHtml(text)}\n\n${sign}` : sign;
 
             try {
@@ -736,8 +746,10 @@
             }
         }
 
-        // 2. Отклонение заявки
-        async function rejectPost(id, uid) {
+        async function rejectPost(id) {
+            const post = currentAdminData?.p?.find(x => x.id === id);
+            const uid = post ? post.uid : 0;
+
             const card = document.getElementById(`post-card-${id}`);
             const buttons = card ? card.querySelectorAll('button') : [];
             buttons.forEach(b => b.disabled = true);
@@ -765,8 +777,9 @@
             }
         }
 
-        // 3. Выдача варна автору
-        async function warnAuthor(id, uid) {
+        async function warnAuthor(id) {
+            const post = currentAdminData?.p?.find(x => x.id === id);
+            const uid = post ? post.uid : 0;
             if (!uid) return showToast("ID автора неизвестен", true);
             if (!confirm(`Выдать предупреждение (+1 варн) автору заявки #${id}?`)) return;
 
@@ -789,8 +802,9 @@
             }
         }
 
-        // 4. Бан автора
-        async function banAuthor(id, uid) {
+        async function banAuthor(id) {
+            const post = currentAdminData?.p?.find(x => x.id === id);
+            const uid = post ? post.uid : 0;
             if (!uid) return showToast("ID автора неизвестен", true);
             if (!confirm(`Заблокировать автора заявки #${id}?`)) return;
 
@@ -829,9 +843,10 @@
                     document.getElementById('pending-list').innerHTML = `
                         <div class="empty-state">
                             🎉 Все заявки обработаны! Новых пока нет.<br>
-                            <small style="color:var(--hint-color); display:block; margin-top:6px;">
-                                Чтобы запросить свежие заявки из базы бота, нажмите «Сохранить в базу бота» или откройте бота.
+                            <small style="color:var(--hint-color); display:block; margin-top:8px;">
+                                Чтобы запросить свежие заявки из базы бота, нажмите кнопку ниже:
                             </small>
+                            <button class="btn-outline" style="margin-top:10px; width:auto;" onclick="syncWithBotDb()">🔄 Обновить из бота</button>
                         </div>
                     `;
                 }
@@ -841,11 +856,10 @@
         // ==================== СИНХРОНИЗАЦИЯ С БАЗОЙ БОТА ====================
         function syncWithBotDb() {
             if (!tg) {
-                return alert("Синхронизация с базой доступна только при открытии через Telegram.");
+                return alert("Синхронизация с базой доступна при открытии через Telegram.");
             }
             const resolved = getResolvedPosts();
             if (resolved.length === 0) {
-                // Если новых действий не было — просто запрашиваем свежие данные
                 tg.sendData(JSON.stringify({ action: "sync" }));
                 return;
             }
@@ -1047,6 +1061,22 @@
             } catch (e) {
                 showToast("Ошибка: " + e.message, true);
             }
+        }
+
+        // ==================== ЗАПУСК ПРИ СТАРТЕ ====================
+        function enableAdminUI() {
+            const tabs = document.getElementById('admin-tabs');
+            if (tabs) tabs.style.display = 'flex';
+            const pill = document.getElementById('role-pill');
+            if (pill) {
+                pill.innerText = "🛡️ Админ";
+                pill.className = "role-badge admin";
+            }
+            loadAdminData();
+        }
+
+        if (isAdmin) {
+            enableAdminUI();
         }
     </script>
 </body>
