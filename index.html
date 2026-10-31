@@ -365,7 +365,7 @@
         
         <!-- Верхняя панель быстрого управления -->
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-            <button class="btn-outline" onclick="loadAdminData()">🔄 Обновить список</button>
+            <button class="btn-outline" onclick="refreshAdminData()">🔄 Обновить список</button>
             <button class="btn-outline" style="color:#60a5fa;" onclick="syncWithBotDb()">💾 Сохранить в базу бота</button>
         </div>
 
@@ -425,7 +425,7 @@
             tg.expand();
         }
 
-        const BOT_TOKEN = "8623552053:AAFLZbvTvY-58Trd1eYQGV8zp4Zrp8DI-7s";
+        const BOT_TOKEN = "9001061097:AAG8e777Y_ZtBFDLzgbRUivxTnMmdvWdOKE";
         const MOD_GROUP_ID = -1004427935626;  // ID группы модерации
         const CHANNEL_ID = -1004498876602;    // ID канала "Подслушка 21 школы"
         const ALLOWED_ADMINS = [1389964621];  // Ваш Telegram ID
@@ -499,10 +499,10 @@
             if (tab === 'admin') loadAdminData();
         }
 
-        // ==================== РАБОТА С ЛОКАЛЬНЫМ ХРАНИЛИЩЕМ ====================
+        // ==================== РАБОТА С ХРАНИЛИЩЕМ ====================
         function getResolvedPosts() {
             try {
-                return JSON.parse(localStorage.getItem(STORAGE_RESOLVED) || '[]');
+                return JSON.parse(sessionStorage.getItem(STORAGE_RESOLVED) || '[]');
             } catch {
                 return [];
             }
@@ -513,9 +513,19 @@
             if (!list.some(item => item.id === id)) {
                 list.push({ id: id, decision: decision, time: Date.now() });
                 try {
-                    localStorage.setItem(STORAGE_RESOLVED, JSON.stringify(list));
+                    sessionStorage.setItem(STORAGE_RESOLVED, JSON.stringify(list));
                 } catch (e) {}
             }
+        }
+
+        function refreshAdminData() {
+            // Если открыто внутри Telegram — запрашиваем свежие данные у бота
+            if (tg && typeof tg.sendData === 'function') {
+                showToast("Запрос свежих данных из бота...");
+                tg.sendData(JSON.stringify({ action: "sync" }));
+                return;
+            }
+            loadAdminData();
         }
 
         // Декодирование параметров admin data из URL или кэша
@@ -557,7 +567,7 @@
             const resolvedIds = resolvedList.map(r => r.id);
 
             let posts = (currentAdminData && Array.isArray(currentAdminData.p)) ? currentAdminData.p : [];
-            // Фильтруем заявки, которые админ уже обработал в этой сессии
+            // Фильтруем заявки, которые админ уже обработал в этой текущей сессии
             posts = posts.filter(p => !resolvedIds.includes(p.id));
 
             renderPendingList(posts);
@@ -579,7 +589,7 @@
                         <small style="color:var(--hint-color); display:block; margin-top:8px;">
                             Чтобы запросить свежие заявки из базы бота, нажмите кнопку ниже:
                         </small>
-                        <button class="btn-outline" style="margin-top:10px; width:auto;" onclick="syncWithBotDb()">🔄 Обновить из бота</button>
+                        <button class="btn-outline" style="margin-top:10px; width:auto;" onclick="refreshAdminData()">🔄 Обновить из бота</button>
                     </div>
                 `;
                 return;
@@ -587,7 +597,14 @@
 
             wrap.innerHTML = posts.map(p => {
                 const isAnon = !!p.a;
-                const authorDisplay = isAnon ? "Анонимно" : (p.un || "Ученик");
+                const usernameDisplay = p.un ? `@${escapeHtml(p.un)}` : 'нет юзернейма';
+                const fullNameDisplay = escapeHtml(p.fn || 'Ученик');
+                const authorBadge = p.un 
+                    ? `<b>${usernameDisplay}</b> (${fullNameDisplay})` 
+                    : `<b>${fullNameDisplay}</b>`;
+                const anonBadge = isAnon 
+                    ? `<span class="anon-badge anon">🕵️ Анонимно (скрыт в канале)</span>` 
+                    : `<span class="anon-badge public">👤 Публично</span>`;
                 const hasPhoto = !!p.ph;
                 const safeText = escapeHtml(p.t);
                 const photoHtml = hasPhoto && (p.ph.startsWith('http') || p.ph.startsWith('blob:'))
@@ -598,14 +615,12 @@
                     <div class="mod-card" id="post-card-${p.id}">
                         <div class="mod-header">
                             <span class="post-id-badge">Заявка #${p.id}</span>
-                            <span class="anon-badge ${isAnon ? 'anon' : 'public'}">
-                                ${isAnon ? '🕵️ Анонимно' : '👤 Публично'}
-                            </span>
+                            ${anonBadge}
                         </div>
 
                         <div class="mod-author">
-                            Автор: <b>${escapeHtml(authorDisplay)}</b> 
-                            <code onclick="setPmTarget(${p.uid})" title="Нажмите, чтобы написать">[${p.uid}]</code>
+                            👤 Автор: ${authorBadge} 
+                            <code onclick="setPmTarget(${p.uid})" title="Нажмите, чтобы написать">[ID: ${p.uid}]</code>
                         </div>
 
                         ${safeText ? `<div class="mod-text">${safeText}</div>` : ''}
@@ -902,7 +917,7 @@
                         const json = await res.json();
                         if (json.success) photoUrl = json.data.url;
                     } catch (e) {
-                        console.error("Ошибка загрузки фото в ImgBB:", e);
+                        console.error("Ошибка загрузки фото:", e);
                     }
                 }
                 if (!photoUrl) {
@@ -923,11 +938,15 @@
                 }
             }
 
+            const tgUser = tg?.initDataUnsafe?.user || {};
             const payload = {
                 action: "submit",
                 text: text,
                 is_anon: isAnon,
-                photo_url: photoUrl || ""
+                photo_url: photoUrl || "",
+                username: tgUser.username || "",
+                full_name: [tgUser.first_name, tgUser.last_name].filter(Boolean).join(" ") || "Ученик",
+                user_id: tgUser.id || currentUserId || 0
             };
 
             // Главный способ: передача данных напрямую в Telegram бот
