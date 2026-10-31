@@ -889,94 +889,58 @@
             btn.innerText = "Отправка...";
 
             let photoUrl = null;
-            if (file && IMGBB_API_KEY && IMGBB_API_KEY !== "ВАШ_КЛЮЧ_IMGBB") {
-                const formData = new FormData();
-                formData.append("image", file);
-                try {
-                    const res = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
-                        method: "POST",
-                        body: formData
-                    });
-                    const json = await res.json();
-                    if (json.success) photoUrl = json.data.url;
-                } catch (e) {
-                    console.error("Ошибка загрузки фото:", e);
+            if (file) {
+                showToast("Загрузка фото...");
+                if (IMGBB_API_KEY && IMGBB_API_KEY !== "ВАШ_КЛЮЧ_IMGBB") {
+                    try {
+                        const formData = new FormData();
+                        formData.append("image", file);
+                        const res = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
+                            method: "POST",
+                            body: formData
+                        });
+                        const json = await res.json();
+                        if (json.success) photoUrl = json.data.url;
+                    } catch (e) {
+                        console.error("Ошибка загрузки фото в ImgBB:", e);
+                    }
+                }
+                if (!photoUrl) {
+                    try {
+                        const formData = new FormData();
+                        formData.append("file", file);
+                        const res = await fetch("https://tmpfiles.org/api/v1/upload", {
+                            method: "POST",
+                            body: formData
+                        });
+                        const json = await res.json();
+                        if (json?.data?.url) {
+                            photoUrl = json.data.url.replace("tmpfiles.org/", "tmpfiles.org/dl/");
+                        }
+                    } catch (e) {
+                        console.error("Ошибка загрузки фото:", e);
+                    }
                 }
             }
 
-            const user = tg?.initDataUnsafe?.user || {};
-            const uid = user.id || currentUserId || 0;
-            const username = user.username ? `@${user.username}` : (user.first_name || "Ученик");
-            const anonStr = isAnon ? "Анонимно 🕵️" : `Публично (${escapeHtml(username)})`;
-            const textBlock = text ? escapeHtml(text) : "<i>(Без текста, только фото)</i>";
-
-            const modCaption = `📩 <b>Новая заявка из Mini App</b>\n` +
-                               `👤 <b>Автор:</b> ${escapeHtml(username)} [<code>${uid}</code>]\n` +
-                               `👁 <b>Режим:</b> ${anonStr}\n\n` +
-                               `📝 <b>Текст:</b>\n${textBlock}`;
-
-            const modKeyboard = {
-                inline_keyboard: [
-                    [
-                        { text: "✅ Одобрить", callback_data: `mod:approve:0` },
-                        { text: "❌ Отклонить", callback_data: `mod:reject:0` }
-                    ],
-                    [
-                        { text: "⚠️ Варн (+1)", callback_data: `mod:warn:0:${uid}` },
-                        { text: "🚫 Бан", callback_data: `mod:ban:0:${uid}` }
-                    ]
-                ]
+            const payload = {
+                action: "submit",
+                text: text,
+                is_anon: isAnon,
+                photo_url: photoUrl || ""
             };
 
-            try {
-                let apiUrl = photoUrl 
-                    ? `https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto` 
-                    : `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
-
-                let payload = photoUrl ? {
-                    chat_id: MOD_GROUP_ID,
-                    photo: photoUrl,
-                    caption: modCaption,
-                    parse_mode: "HTML",
-                    reply_markup: modKeyboard
-                } : {
-                    chat_id: MOD_GROUP_ID,
-                    text: modCaption,
-                    parse_mode: "HTML",
-                    reply_markup: modKeyboard
-                };
-
-                const resp = await fetch(apiUrl, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(payload)
-                });
-                const resJson = await resp.json();
-
-                if (resJson.ok) {
-                    document.getElementById('post-text').value = "";
-                    clearPhoto();
-                    showToast("✅ Заявка успешно отправлена на модерацию!");
-                    if (tg) tg.showAlert("✅ Ваша заявка успешно отправлена на модерацию!");
-                } else {
-                    throw new Error(resJson.description || "Ошибка отправки");
-                }
-            } catch (err) {
-                console.warn("Резервный путь отправки:", err);
-                if (tg) {
-                    tg.sendData(JSON.stringify({
-                        action: "submit",
-                        text: text,
-                        is_anon: isAnon,
-                        photo_url: photoUrl
-                    }));
-                } else {
-                    showToast("Ошибка отправки: " + err.message, true);
-                }
-            } finally {
-                btn.disabled = false;
-                btn.innerText = "Отправить в предложку";
+            // Главный способ: передача данных напрямую в Telegram бот
+            // Бот сохраняет заявку в базу school21.db и отправляет в модерацию
+            if (tg && typeof tg.sendData === 'function') {
+                tg.sendData(JSON.stringify(payload));
+                return;
             }
+
+            // Резервный способ (если открыто в браузере вне Telegram):
+            showToast("Для отправки заявки откройте приложение через Telegram бота!", true);
+            btn.disabled = false;
+            btn.innerText = "Отправить в предложку";
         }
 
         // ==================== РАССЫЛКА И ЛИЧНЫЕ СООБЩЕНИЯ ====================
