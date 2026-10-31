@@ -7,12 +7,16 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         :root {
-            --bg-color: var(--tg-theme-bg-color, #18222d);
-            --text-color: var(--tg-theme-text-color, #ffffff);
-            --hint-color: var(--tg-theme-hint-color, #888888);
-            --btn-color: var(--tg-theme-button-color, #3390ec);
+            --bg-color: var(--tg-theme-bg-color, #0f172a);
+            --text-color: var(--tg-theme-text-color, #f8fafc);
+            --hint-color: var(--tg-theme-hint-color, #94a3b8);
+            --btn-color: var(--tg-theme-button-color, #2563eb);
             --btn-text: var(--tg-theme-button-text-color, #ffffff);
-            --sec-bg: var(--tg-theme-secondary-bg-color, #131a22);
+            --sec-bg: var(--tg-theme-secondary-bg-color, #1e293b);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --green: #10b981;
+            --red: #ef4444;
+            --orange: #f59e0b;
         }
         * { box-sizing: border-box; }
         body {
@@ -21,11 +25,67 @@
             color: var(--text-color);
             margin: 0;
             padding: 14px;
-            padding-bottom: 40px;
+            padding-bottom: 50px;
         }
-        h2 { margin: 0 0 12px 0; font-size: 20px; user-select: none; cursor: pointer; }
-        h3 { margin: 0 0 10px 0; font-size: 16px; }
-        
+
+        /* Плавающее уведомление (Toast) */
+        #toast {
+            position: fixed;
+            top: 14px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-70px);
+            background: #10b981;
+            color: #ffffff;
+            padding: 10px 18px;
+            border-radius: 20px;
+            font-size: 13.5px;
+            font-weight: 600;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+            opacity: 0;
+            pointer-events: none;
+            transition: transform 0.25s ease, opacity 0.25s ease;
+            z-index: 99999;
+            max-width: 90%;
+            text-align: center;
+        }
+        #toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+        #toast.error {
+            background: #ef4444;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 14px;
+        }
+        .header h2 {
+            margin: 0;
+            font-size: 20px;
+            user-select: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .role-badge {
+            font-size: 11px;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 12px;
+            background: rgba(37, 99, 235, 0.2);
+            color: #60a5fa;
+            border: 1px solid rgba(37, 99, 235, 0.4);
+        }
+        .role-badge.admin {
+            background: rgba(245, 158, 11, 0.2);
+            color: #fbbf24;
+            border-color: rgba(245, 158, 11, 0.4);
+        }
+
         .tabs {
             display: none;
             gap: 8px;
@@ -33,62 +93,96 @@
         }
         .tab-btn {
             flex: 1;
-            padding: 10px;
-            border-radius: 10px;
+            padding: 11px;
+            border-radius: 12px;
             background: var(--sec-bg);
             color: var(--text-color);
-            border: 1px solid rgba(128, 128, 128, 0.2);
-            font-weight: 600;
-            font-size: 14px;
+            border: 1px solid var(--card-border);
+            font-weight: 700;
+            font-size: 13.5px;
             cursor: pointer;
             transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
         }
         .tab-btn.active {
             background: var(--btn-color);
             color: var(--btn-text);
             border-color: var(--btn-color);
         }
+        .badge-count {
+            background: rgba(255, 255, 255, 0.25);
+            padding: 2px 7px;
+            border-radius: 10px;
+            font-size: 11px;
+        }
+
         .tab-view { display: none; }
         .tab-view.active { display: block; }
 
         .card {
             background: var(--sec-bg);
+            border: 1px solid var(--card-border);
             border-radius: 14px;
             padding: 14px;
             margin-bottom: 14px;
         }
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        h3 { margin: 0; font-size: 16px; font-weight: 700; }
+        .desc {
+            font-size: 13px;
+            color: var(--hint-color);
+            margin: 0 0 12px 0;
+            line-height: 1.4;
+        }
+
         textarea, input[type="text"], input[type="number"] {
             width: 100%;
-            border: 1px solid rgba(128, 128, 128, 0.25);
+            border: 1px solid var(--card-border);
             border-radius: 10px;
             padding: 10px 12px;
-            background: var(--bg-color);
+            background: rgba(0, 0, 0, 0.25);
             color: var(--text-color);
             font-size: 14px;
             outline: none;
             margin-bottom: 8px;
+            transition: border-color 0.2s ease;
         }
-        textarea { min-height: 120px; resize: vertical; }
+        textarea:focus, input:focus {
+            border-color: var(--btn-color);
+        }
+        textarea { min-height: 110px; resize: vertical; }
+
         .file-label {
             display: block;
             margin: 8px 0;
-            padding: 11px;
+            padding: 12px;
             border: 1.5px dashed var(--btn-color);
             border-radius: 10px;
             text-align: center;
             cursor: pointer;
             font-size: 14px;
-            font-weight: 500;
+            font-weight: 600;
         }
-        #preview-wrap { display: none; margin: 10px 0; }
-        #preview { width: 100%; max-height: 200px; object-fit: cover; border-radius: 10px; }
+        #preview-wrap { display: none; margin: 10px 0; text-align: center; }
+        #preview { width: 100%; max-height: 220px; object-fit: contain; border-radius: 10px; background: rgba(0,0,0,0.3); }
+
         .toggle-row {
             display: flex;
             align-items: center;
             justify-content: space-between;
             margin: 12px 0;
             font-size: 14px;
+            font-weight: 500;
         }
+
         button {
             width: 100%;
             padding: 12px;
@@ -96,45 +190,156 @@
             border-radius: 10px;
             background-color: var(--btn-color);
             color: var(--btn-text);
-            font-size: 15px;
-            font-weight: 600;
+            font-size: 14.5px;
+            font-weight: 700;
             cursor: pointer;
             transition: opacity 0.2s ease, transform 0.1s ease;
         }
         button:active { transform: scale(0.98); }
         button:disabled { opacity: 0.6; cursor: default; }
-        
-        .success-box {
-            display: none;
-            background: rgba(16, 185, 129, 0.15);
-            border: 1px solid #10b981;
-            color: #34d399;
-            padding: 12px;
-            border-radius: 10px;
-            margin-bottom: 12px;
-            font-size: 14px;
-            font-weight: 500;
-            text-align: center;
+
+        .btn-green { background-color: var(--green); color: #fff; }
+        .btn-red { background-color: var(--red); color: #fff; }
+        .btn-orange { background-color: var(--orange); color: #fff; }
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--card-border);
+            color: var(--text-color);
+            padding: 7px 12px;
+            font-size: 12px;
+            border-radius: 8px;
+            width: auto;
         }
+        .btn-grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        .btn-grid-4 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+            margin-top: 10px;
+        }
+        .btn-mini {
+            padding: 7px 10px;
+            font-size: 12px;
+            border-radius: 8px;
+        }
+
+        /* Карточка заявки на проверке */
+        .mod-card {
+            background: rgba(0, 0, 0, 0.28);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 12px;
+            transition: all 0.25s ease;
+        }
+        .mod-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 13px;
+            margin-bottom: 8px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid var(--card-border);
+        }
+        .post-id-badge {
+            font-weight: 800;
+            color: #60a5fa;
+        }
+        .anon-badge {
+            font-size: 11px;
+            padding: 2px 7px;
+            border-radius: 8px;
+            font-weight: 600;
+        }
+        .anon-badge.anon { background: rgba(148, 163, 184, 0.2); color: #cbd5e1; }
+        .anon-badge.public { background: rgba(37, 99, 235, 0.2); color: #93c5fd; }
+
+        .mod-author {
+            font-size: 12px;
+            color: var(--hint-color);
+            margin-bottom: 8px;
+        }
+        .mod-author code {
+            background: rgba(255, 255, 255, 0.08);
+            padding: 1px 5px;
+            border-radius: 4px;
+            color: #e2e8f0;
+            cursor: pointer;
+        }
+        .mod-text {
+            font-size: 14px;
+            line-height: 1.45;
+            white-space: pre-wrap;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 10px;
+            border-radius: 8px;
+            border-left: 3px solid var(--btn-color);
+            margin-bottom: 8px;
+        }
+        .mod-photo {
+            width: 100%;
+            max-height: 180px;
+            object-fit: cover;
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 24px 10px;
+            font-size: 14px;
+            color: var(--hint-color);
+            background: rgba(0, 0, 0, 0.15);
+            border-radius: 12px;
+            border: 1px dashed var(--card-border);
+        }
+
+        .user-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 10px;
+            border-bottom: 1px solid var(--card-border);
+            font-size: 13px;
+        }
+        .user-row:last-child { border-bottom: none; }
+        .user-meta { font-size: 11px; color: var(--hint-color); }
     </style>
 </head>
 <body>
 
-    <h2 onclick="secretTap()">🤫 Подслушка 21 школы</h2>
+    <div id="toast">Уведомление</div>
+
+    <div class="header">
+        <h2 onclick="secretTap()">🤫 Подслушка 21 школы</h2>
+        <div class="role-badge" id="role-pill">👤 Ученик</div>
+    </div>
 
     <div class="tabs" id="admin-tabs">
-        <button class="tab-btn active" id="btn-tab-user" onclick="switchTab('user', this)">✍️ Предложка</button>
-        <button class="tab-btn" id="btn-tab-admin" onclick="switchTab('admin', this)">🛡️ Админ-панель</button>
+        <button class="tab-btn active" id="btn-tab-user" onclick="switchTab('user', this)">
+            ✍️ Предложка
+        </button>
+        <button class="tab-btn" id="btn-tab-admin" onclick="switchTab('admin', this)">
+            🛡️ Админка <span class="badge-count" id="admin-badge-count">0</span>
+        </button>
     </div>
 
     <!-- ==================== ВКЛАДКА 1: ПРЕДЛОЖКА ==================== -->
     <div id="view-user" class="tab-view active">
         <div class="card">
-            <div id="success-banner" class="success-box">
-                ✅ Ваша заявка успешно отправлена на модерацию!
+            <div class="card-header">
+                <h3>Новая запись</h3>
             </div>
+            <p class="desc">
+                Напишите новость, историю, сплетню или признание. Запись отправится на модерацию.
+            </p>
 
-            <textarea id="post-text" placeholder="Напиши свою историю, сплетню или вопрос..."></textarea>
+            <textarea id="post-text" placeholder="Напиши свою историю или вопрос..."></textarea>
 
             <label class="file-label">
                 📷 Прикрепить фото / картинку
@@ -143,27 +348,73 @@
 
             <div id="preview-wrap">
                 <img id="preview" alt="Предпросмотр">
-                <button type="button" style="background:#ef4444; padding:8px; font-size:13px; margin-top:6px;" onclick="clearPhoto()">🗑 Удалить фото</button>
+                <button type="button" class="btn-red" style="padding:8px; font-size:13px; margin-top:6px;" onclick="clearPhoto()">🗑 Удалить фото</button>
             </div>
 
             <div class="toggle-row">
                 <label for="anon-check">Опубликовать анонимно 🕵️</label>
-                <input type="checkbox" id="anon-check" checked style="transform: scale(1.3);">
+                <input type="checkbox" id="anon-check" checked style="transform: scale(1.3); cursor:pointer;">
             </div>
+
             <button id="submit-btn" onclick="sendPost()">Отправить в предложку</button>
         </div>
     </div>
 
-    <!-- ==================== ВКЛАДКА 2: АДМИН-ПАНЕЛЬ (РАССЫЛКА) ==================== -->
+    <!-- ==================== ВКЛАДКА 2: АДМИН-ПАНЕЛЬ МОДЕРАТОРА ==================== -->
     <div id="view-admin" class="tab-view">
-        <div class="card">
-            <h3>📢 Рассылка в канал / объявление</h3>
-            <p style="font-size:13px; color:var(--hint-color); margin-top:0;">
-                Отправляет объявление напрямую в канал подписчикам без закрытия окна.
-            </p>
-            <textarea id="bc-text" placeholder="Введите текст объявления..."></textarea>
-            <button id="bc-btn" onclick="sendBroadcast()">Опубликовать объявление</button>
+        
+        <!-- Верхняя панель быстрого управления -->
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <button class="btn-outline" onclick="loadAdminData()">🔄 Обновить список</button>
+            <button class="btn-outline" style="color:#60a5fa;" onclick="syncWithBotDb()">💾 Сохранить в базу бота</button>
         </div>
+
+        <!-- 1. НЕОБРАБОТАННЫЕ ЗАЯВКИ (МОДЕРАЦИЯ) -->
+        <div class="card">
+            <div class="card-header">
+                <h3>📩 Необработанные заявки (<span id="pending-count">0</span>)</h3>
+            </div>
+            <p class="desc">
+                Принимайте или отклоняйте заявки в один клик. <b>Окно не закроется!</b>
+            </p>
+
+            <div id="pending-list">
+                <div class="empty-state">Загрузка заявок...</div>
+            </div>
+        </div>
+
+        <!-- 2. РАССЫЛКА В КАНАЛ -->
+        <div class="card">
+            <div class="card-header">
+                <h3>📢 Рассылка / Объявление в канал</h3>
+            </div>
+            <p class="desc">
+                Публикует важное объявление в канал напрямую от лица бота.
+            </p>
+            <textarea id="bc-text" placeholder="Введите текст объявления для канала..."></textarea>
+            <button id="bc-btn" onclick="sendBroadcast()">Опубликовать в канал</button>
+        </div>
+
+        <!-- 3. ЛИЧНОЕ СООБЩЕНИЕ УЧЕНИКУ -->
+        <div class="card">
+            <div class="card-header">
+                <h3>✉️ Сообщение ученику в ЛС</h3>
+            </div>
+            <input type="text" id="pm-target-id" placeholder="Telegram ID пользователя (например, 1389964621)">
+            <textarea id="pm-text" placeholder="Текст сообщения от имени администрации..." style="min-height:80px;"></textarea>
+            <button id="pm-btn" onclick="sendPm()">Отправить в ЛС</button>
+        </div>
+
+        <!-- 4. СПИСОК ПОЛЬЗОВАТЕЛЕЙ -->
+        <div class="card">
+            <div class="card-header">
+                <h3>👥 Пользователи бота (<span id="users-count">0</span>)</h3>
+            </div>
+            <div id="users-list" style="max-height: 280px; overflow-y: auto;">
+                <div class="empty-state">Нет данных о пользователях</div>
+            </div>
+        </div>
+
     </div>
 
     <script>
@@ -175,10 +426,12 @@
 
         // ==================== КОНФИГУРАЦИЯ БОТА ====================
         const BOT_TOKEN = "8623552053:AAFLZbvTvY-58Trd1eYQGV8zp4Zrp8DI-7s";
-        const MOD_GROUP_ID = -1004427935626;  // Группа модерации
-        const CHANNEL_ID = -1004498876602;    // Канал публикации
-        const ALLOWED_ADMINS = [1389964621];  // ID администратора
+        const MOD_GROUP_ID = -1004427935626;  // ID группы модерации
+        const CHANNEL_ID = -1004498876602;    // ID канала "Подслушка 21 школы"
+        const ALLOWED_ADMINS = [1389964621];  // Ваш Telegram ID
         const IMGBB_API_KEY = "ВАШ_КЛЮЧ_IMGBB";
+
+        const STORAGE_RESOLVED = 'podslushka_resolved_posts';
 
         const urlParams = new URLSearchParams(window.location.search);
         const currentUserId = tg?.initDataUnsafe?.user?.id || 0;
@@ -192,12 +445,14 @@
             enableAdminUI();
         }
 
+        // Секретный 5-кратный клик по заголовку
         let tapCount = 0;
         function secretTap() {
             tapCount++;
             if (tapCount >= 5) {
                 isAdmin = true;
                 enableAdminUI();
+                showToast("🛡️ Режим администратора активирован!");
                 switchTab('admin', document.getElementById('btn-tab-admin'));
                 tapCount = 0;
             }
@@ -205,13 +460,32 @@
 
         function enableAdminUI() {
             document.getElementById('admin-tabs').style.display = 'flex';
+            const pill = document.getElementById('role-pill');
+            pill.innerText = "🛡️ Админ";
+            pill.className = "role-badge admin";
+            loadAdminData();
         }
 
         function switchTab(tab, btn) {
             document.querySelectorAll('.tab-view').forEach(el => el.classList.remove('active'));
             document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
             document.getElementById('view-' + tab).classList.add('active');
-            btn.classList.add('active');
+            if (btn) btn.classList.add('active');
+            if (tab === 'admin') loadAdminData();
+        }
+
+        // ==================== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ====================
+        let toastTimer = null;
+        function showToast(text, isError = false) {
+            const el = document.getElementById('toast');
+            el.innerText = text;
+            el.className = isError ? 'show error' : 'show';
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => { el.className = ''; }, 2800);
+        }
+
+        function escapeHtml(s) {
+            return String(s || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
         }
 
         function previewFile() {
@@ -227,21 +501,373 @@
             document.getElementById('preview-wrap').style.display = 'none';
         }
 
-        function escapeHtml(s) {
-            return String(s || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+        function setPmTarget(uid) {
+            document.getElementById('pm-target-id').value = uid;
+            showToast(`ID ${uid} подставлен в форму сообщения`);
+            document.getElementById('pm-text').focus();
         }
 
-        // ==================== ОТПРАВКА БЕЗ ЗАКРЫТИЯ ВКЛАДКИ ====================
-        // Отправка идёт напрямую в Telegram Bot API по HTTPS.
-        // Поэтому вкладка Mini App НЕ закрывается (в отличие от tg.sendData),
-        // а вам не нужно запускать никаких серверов на портах 8080 или туннелей!
+        // ==================== РАБОТА С ЛОКАЛЬНЫМ ХРАНИЛИЩЕМ ====================
+        function getResolvedPosts() {
+            try {
+                return JSON.parse(localStorage.getItem(STORAGE_RESOLVED) || '[]');
+            } catch {
+                return [];
+            }
+        }
+
+        function markPostResolved(id, decision) {
+            const list = getResolvedPosts();
+            if (!list.some(item => item.id === id)) {
+                list.push({ id: id, decision: decision, time: Date.now() });
+                localStorage.setItem(STORAGE_RESOLVED, JSON.stringify(list));
+            }
+        }
+
+        // Декодирование параметров admin data из URL
+        function decodeAdminData() {
+            const dataParam = urlParams.get('data');
+            if (!dataParam) return null;
+            try {
+                let b64 = dataParam.replace(/-/g, '+').replace(/_/g, '/');
+                while (b64.length % 4) b64 += '=';
+                const binary = atob(b64);
+                const bytes = new Uint8Array(binary.length);
+                for (let i = 0; i < binary.length; i++) {
+                    bytes[i] = binary.charCodeAt(i);
+                }
+                const jsonStr = new TextDecoder('utf-8').decode(bytes);
+                return JSON.parse(jsonStr);
+            } catch (e) {
+                console.error("Ошибка парсинга data:", e);
+                return null;
+            }
+        }
+
+        // ==================== ЗАГРУЗКА И ОТОБРАЖЕНИЕ АДМИН-ДАННЫХ ====================
+        let currentAdminData = null;
+
+        function loadAdminData() {
+            currentAdminData = decodeAdminData();
+            const resolvedList = getResolvedPosts();
+            const resolvedIds = resolvedList.map(r => r.id);
+
+            let posts = (currentAdminData && currentAdminData.p) ? currentAdminData.p : [];
+            // Фильтруем заявки, которые админ уже обработал в этой сессии
+            posts = posts.filter(p => !resolvedIds.includes(p.id));
+
+            renderPendingList(posts);
+            renderUsersList((currentAdminData && currentAdminData.u) ? currentAdminData.u : []);
+        }
+
+        function renderPendingList(posts) {
+            const wrap = document.getElementById('pending-list');
+            const countEl = document.getElementById('pending-count');
+            const badgeEl = document.getElementById('admin-badge-count');
+
+            countEl.innerText = posts.length;
+            badgeEl.innerText = posts.length;
+
+            if (posts.length === 0) {
+                wrap.innerHTML = `
+                    <div class="empty-state">
+                        🎉 Все заявки обработаны! Новых пока нет.<br>
+                        <small style="color:var(--hint-color); display:block; margin-top:6px;">
+                            Чтобы запросить свежие заявки из базы бота, нажмите «Сохранить в базу бота» или откройте бота.
+                        </small>
+                    </div>
+                `;
+                return;
+            }
+
+            wrap.innerHTML = posts.map(p => {
+                const isAnon = !!p.a;
+                const authorDisplay = isAnon ? "Анонимно" : (p.un || "Ученик");
+                const hasPhoto = !!p.ph;
+                const safeText = escapeHtml(p.t);
+                const photoHtml = hasPhoto && (p.ph.startsWith('http') || p.ph.startsWith('blob:'))
+                    ? `<img src="${p.ph}" class="mod-photo" alt="Фото заявки">`
+                    : (hasPhoto ? `<div style="font-size:12px; color:#60a5fa; margin-bottom:6px;">📷 Фото прикреплено (ID: ${p.ph.slice(0, 15)}...)</div>` : '');
+
+                return `
+                    <div class="mod-card" id="post-card-${p.id}">
+                        <div class="mod-header">
+                            <span class="post-id-badge">Заявка #${p.id}</span>
+                            <span class="anon-badge ${isAnon ? 'anon' : 'public'}">
+                                ${isAnon ? '🕵️ Анонимно' : '👤 Публично'}
+                            </span>
+                        </div>
+
+                        <div class="mod-author">
+                            Автор: <b>${escapeHtml(authorDisplay)}</b> 
+                            <code onclick="setPmTarget(${p.uid})" title="Нажмите, чтобы написать">[${p.uid}]</code>
+                        </div>
+
+                        ${safeText ? `<div class="mod-text">${safeText}</div>` : ''}
+                        ${photoHtml}
+
+                        <div class="btn-grid-2">
+                            <button class="btn-green" onclick="approvePost(${p.id}, ${p.uid}, '${escapeHtml(p.un || '')}', ${isAnon})">
+                                ✅ Принять
+                            </button>
+                            <button class="btn-red" onclick="rejectPost(${p.id}, ${p.uid})">
+                                ❌ Отклонить
+                            </button>
+                        </div>
+
+                        <div class="btn-grid-4">
+                            <button class="btn-mini btn-orange" onclick="warnAuthor(${p.id}, ${p.uid})">
+                                ⚠️ Варн (+1)
+                            </button>
+                            <button class="btn-mini btn-red" onclick="banAuthor(${p.id}, ${p.uid})">
+                                🚫 Бан
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderUsersList(users) {
+            const wrap = document.getElementById('users-list');
+            const countEl = document.getElementById('users-count');
+            countEl.innerText = users.length;
+
+            if (users.length === 0) {
+                wrap.innerHTML = '<div class="empty-state">Список пользователей пока пуст</div>';
+                return;
+            }
+
+            wrap.innerHTML = users.map(u => {
+                const isBanned = !!u.b;
+                const warns = u.w || 0;
+                const name = escapeHtml(u.fn || u.un || `ID ${u.id}`);
+                const uname = u.un ? `@${u.un}` : `ID ${u.id}`;
+
+                return `
+                    <div class="user-row">
+                        <div>
+                            <div><b>${name}</b> <small style="color:var(--hint-color)">(${uname})</small></div>
+                            <div class="user-meta">
+                                <code>${u.id}</code> · 
+                                ${isBanned ? '<span style="color:#ef4444; font-weight:bold;">🚫 Забанен</span>' : '<span style="color:#10b981;">✅ Активен</span>'} · 
+                                Варны: ${warns}/3
+                            </div>
+                        </div>
+                        <div style="display:flex; gap:4px;">
+                            <button class="btn-outline" style="padding:4px 8px; font-size:11px;" onclick="setPmTarget(${u.id})">✉️</button>
+                            <button class="btn-outline" style="padding:4px 8px; font-size:11px; color:#f59e0b;" onclick="sendQuickWarn(${u.id})">⚠️</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // ==================== МОДЕРАЦИЯ ЗАЯВОК (БЕЗ ЗАКРЫТИЯ ОКНА) ====================
+        // 1. Одобрение заявки
+        async function approvePost(id, uid, authorName, isAnon) {
+            const card = document.getElementById(`post-card-${id}`);
+            const buttons = card ? card.querySelectorAll('button') : [];
+            buttons.forEach(b => b.disabled = true);
+
+            showToast(`Публикация заявки #${id}...`);
+
+            // Ищем данные поста
+            const post = currentAdminData?.p?.find(x => x.id === id);
+            const text = post ? post.t : "";
+            const photo = post ? post.ph : null;
+
+            const sign = isAnon ? "🕵️ <i>Анонимно</i>" : `✍️ <i>Автор: ${escapeHtml(authorName || 'Ученик')}</i>`;
+            const channelCaption = text ? `${escapeHtml(text)}\n\n${sign}` : sign;
+
+            try {
+                let apiUrl = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
+                let payload = {
+                    chat_id: CHANNEL_ID,
+                    text: channelCaption,
+                    parse_mode: "HTML"
+                };
+
+                if (photo) {
+                    apiUrl = `https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`;
+                    payload = {
+                        chat_id: CHANNEL_ID,
+                        photo: photo,
+                        caption: channelCaption,
+                        parse_mode: "HTML"
+                    };
+                }
+
+                const res = await fetch(apiUrl, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+                const resJson = await res.json();
+
+                if (!resJson.ok) {
+                    throw new Error(resJson.description || "Ошибка Telegram API");
+                }
+
+                // Уведомляем автора
+                if (uid && uid > 0) {
+                    try {
+                        await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                                chat_id: uid,
+                                text: `🎉 <b>Ваша заявка #${id} опубликована в канале!</b>`,
+                                parse_mode: "HTML"
+                            })
+                        });
+                    } catch (e) {
+                        console.warn("Не удалось уведомить автора:", e);
+                    }
+                }
+
+                markPostResolved(id, 'approved');
+                showToast(`✅ Заявка #${id} успешно опубликована!`);
+                animateRemoveCard(id);
+
+            } catch (err) {
+                showToast("Ошибка: " + err.message, true);
+                buttons.forEach(b => b.disabled = false);
+            }
+        }
+
+        // 2. Отклонение заявки
+        async function rejectPost(id, uid) {
+            const card = document.getElementById(`post-card-${id}`);
+            const buttons = card ? card.querySelectorAll('button') : [];
+            buttons.forEach(b => b.disabled = true);
+
+            try {
+                if (uid && uid > 0) {
+                    await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            chat_id: uid,
+                            text: `❌ <b>Ваша заявка #${id} отклонена модератором.</b>`,
+                            parse_mode: "HTML"
+                        })
+                    });
+                }
+
+                markPostResolved(id, 'rejected');
+                showToast(`❌ Заявка #${id} отклонена`);
+                animateRemoveCard(id);
+
+            } catch (err) {
+                showToast("Ошибка: " + err.message, true);
+                buttons.forEach(b => b.disabled = false);
+            }
+        }
+
+        // 3. Выдача варна автору
+        async function warnAuthor(id, uid) {
+            if (!uid) return showToast("ID автора неизвестен", true);
+            if (!confirm(`Выдать предупреждение (+1 варн) автору заявки #${id}?`)) return;
+
+            try {
+                await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        chat_id: uid,
+                        text: `⚠️ <b>Вам выдано предупреждение от администрации!</b> Соблюдайте правила предложки.`,
+                        parse_mode: "HTML"
+                    })
+                });
+
+                markPostResolved(id, 'rejected');
+                showToast(`⚠️ Выдан варн автору заявки #${id}`);
+                animateRemoveCard(id);
+            } catch (err) {
+                showToast("Ошибка: " + err.message, true);
+            }
+        }
+
+        // 4. Бан автора
+        async function banAuthor(id, uid) {
+            if (!uid) return showToast("ID автора неизвестен", true);
+            if (!confirm(`Заблокировать автора заявки #${id}?`)) return;
+
+            try {
+                await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        chat_id: uid,
+                        text: `🚫 <b>Вы были заблокированы администрацией предложки.</b>`,
+                        parse_mode: "HTML"
+                    })
+                });
+
+                markPostResolved(id, 'rejected');
+                showToast(`🚫 Автор заявки #${id} заблокирован`);
+                animateRemoveCard(id);
+            } catch (err) {
+                showToast("Ошибка: " + err.message, true);
+            }
+        }
+
+        function animateRemoveCard(id) {
+            const card = document.getElementById(`post-card-${id}`);
+            if (!card) return;
+            card.style.opacity = '0';
+            card.style.transform = 'scale(0.95) translateY(-8px)';
+            setTimeout(() => {
+                card.remove();
+                const countEl = document.getElementById('pending-count');
+                const badgeEl = document.getElementById('admin-badge-count');
+                let count = Math.max(0, (parseInt(countEl.innerText) || 1) - 1);
+                countEl.innerText = count;
+                badgeEl.innerText = count;
+                if (count === 0) {
+                    document.getElementById('pending-list').innerHTML = `
+                        <div class="empty-state">
+                            🎉 Все заявки обработаны! Новых пока нет.<br>
+                            <small style="color:var(--hint-color); display:block; margin-top:6px;">
+                                Чтобы запросить свежие заявки из базы бота, нажмите «Сохранить в базу бота» или откройте бота.
+                            </small>
+                        </div>
+                    `;
+                }
+            }, 250);
+        }
+
+        // ==================== СИНХРОНИЗАЦИЯ С БАЗОЙ БОТА ====================
+        function syncWithBotDb() {
+            if (!tg) {
+                return alert("Синхронизация с базой доступна только при открытии через Telegram.");
+            }
+            const resolved = getResolvedPosts();
+            if (resolved.length === 0) {
+                // Если новых действий не было — просто запрашиваем свежие данные
+                tg.sendData(JSON.stringify({ action: "sync" }));
+                return;
+            }
+
+            const approvedIds = resolved.filter(r => r.decision === 'approved').map(r => r.id);
+            const rejectedIds = resolved.filter(r => r.decision === 'rejected').map(r => r.id);
+
+            tg.sendData(JSON.stringify({
+                action: "bulk_resolve",
+                approved: approvedIds,
+                rejected: rejectedIds
+            }));
+        }
+
+        // ==================== ОТПРАВКА ПОСТА В ПРЕДЛОЖКУ ====================
         async function sendPost() {
             const text = document.getElementById('post-text').value.trim();
             const isAnon = document.getElementById('anon-check').checked;
             const file = document.getElementById('photo-input').files[0];
 
             if (!text && !file) {
-                return tg ? tg.showAlert("Напишите текст или прикрепите фотографию!") : alert("Напишите текст или прикрепите фото!");
+                return showToast("Напишите текст или прикрепите фото!", true);
             }
 
             const btn = document.getElementById('submit-btn');
@@ -249,27 +875,21 @@
             btn.innerText = "Отправка...";
 
             let photoUrl = null;
-            if (file) {
-                // Если указан ключ ImgBB — грузим через него
-                if (IMGBB_API_KEY && IMGBB_API_KEY !== "ВАШ_КЛЮЧ_IMGBB") {
-                    const formData = new FormData();
-                    formData.append("image", file);
-                    try {
-                        const res = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
-                            method: "POST",
-                            body: formData
-                        });
-                        const json = await res.json();
-                        if (json.success) {
-                            photoUrl = json.data.url;
-                        }
-                    } catch (e) {
-                        console.error("Ошибка ImgBB:", e);
-                    }
+            if (file && IMGBB_API_KEY && IMGBB_API_KEY !== "ВАШ_КЛЮЧ_IMGBB") {
+                const formData = new FormData();
+                formData.append("image", file);
+                try {
+                    const res = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
+                        method: "POST",
+                        body: formData
+                    });
+                    const json = await res.json();
+                    if (json.success) photoUrl = json.data.url;
+                } catch (e) {
+                    console.error("Ошибка загрузки фото:", e);
                 }
             }
 
-            // Формируем карточку для группы модерации
             const user = tg?.initDataUnsafe?.user || {};
             const uid = user.id || currentUserId || 0;
             const username = user.username ? `@${user.username}` : (user.first_name || "Ученик");
@@ -295,27 +915,22 @@
             };
 
             try {
-                let apiUrl;
-                let payload;
+                let apiUrl = photoUrl 
+                    ? `https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto` 
+                    : `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
 
-                if (photoUrl) {
-                    apiUrl = `https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`;
-                    payload = {
-                        chat_id: MOD_GROUP_ID,
-                        photo: photoUrl,
-                        caption: modCaption,
-                        parse_mode: "HTML",
-                        reply_markup: modKeyboard
-                    };
-                } else {
-                    apiUrl = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
-                    payload = {
-                        chat_id: MOD_GROUP_ID,
-                        text: modCaption,
-                        parse_mode: "HTML",
-                        reply_markup: modKeyboard
-                    };
-                }
+                let payload = photoUrl ? {
+                    chat_id: MOD_GROUP_ID,
+                    photo: photoUrl,
+                    caption: modCaption,
+                    parse_mode: "HTML",
+                    reply_markup: modKeyboard
+                } : {
+                    chat_id: MOD_GROUP_ID,
+                    text: modCaption,
+                    parse_mode: "HTML",
+                    reply_markup: modKeyboard
+                };
 
                 const resp = await fetch(apiUrl, {
                     method: "POST",
@@ -325,20 +940,15 @@
                 const resJson = await resp.json();
 
                 if (resJson.ok) {
-                    // Очищаем форму и показываем баннер успеха БЕЗ закрытия вкладки
                     document.getElementById('post-text').value = "";
                     clearPhoto();
-                    const banner = document.getElementById('success-banner');
-                    banner.style.display = "block";
-                    setTimeout(() => { banner.style.display = "none"; }, 4000);
-
+                    showToast("✅ Заявка успешно отправлена на модерацию!");
                     if (tg) tg.showAlert("✅ Ваша заявка успешно отправлена на модерацию!");
                 } else {
-                    throw new Error(resJson.description || "Ошибка отправки в Telegram");
+                    throw new Error(resJson.description || "Ошибка отправки");
                 }
             } catch (err) {
-                // Если прямая отправка не удалась (например оффлайн), отправляем стандартным sendData как резерв
-                console.warn("Резервный путь:", err);
+                console.warn("Резервный путь отправки:", err);
                 if (tg) {
                     tg.sendData(JSON.stringify({
                         action: "submit",
@@ -347,7 +957,7 @@
                         photo_url: photoUrl
                     }));
                 } else {
-                    alert("Ошибка отправки: " + err.message);
+                    showToast("Ошибка отправки: " + err.message, true);
                 }
             } finally {
                 btn.disabled = false;
@@ -355,10 +965,10 @@
             }
         }
 
-        // ==================== РАССЫЛКА ИЗ АДМИНКИ ====================
+        // ==================== РАССЫЛКА И ЛИЧНЫЕ СООБЩЕНИЯ ====================
         async function sendBroadcast() {
             const text = document.getElementById('bc-text').value.trim();
-            if (!text) return tg ? tg.showAlert("Введите текст объявления!") : alert("Введите текст!");
+            if (!text) return showToast("Введите текст объявления!", true);
 
             const btn = document.getElementById('bc-btn');
             btn.disabled = true;
@@ -377,15 +987,65 @@
                 const res = await resp.json();
                 if (res.ok) {
                     document.getElementById('bc-text').value = "";
-                    if (tg) tg.showAlert("✅ Объявление опубликовано в канале!");
+                    showToast("✅ Объявление опубликовано в канале!");
                 } else {
                     throw new Error(res.description || "Ошибка отправки");
                 }
             } catch (e) {
-                if (tg) tg.showAlert("Ошибка: " + e.message);
+                showToast("Ошибка: " + e.message, true);
             } finally {
                 btn.disabled = false;
-                btn.innerText = "Опубликовать объявление";
+                btn.innerText = "Опубликовать в канал";
+            }
+        }
+
+        async function sendPm() {
+            const uid = document.getElementById('pm-target-id').value.trim();
+            const text = document.getElementById('pm-text').value.trim();
+            if (!uid || !text) return showToast("Укажите ID и текст сообщения!", true);
+
+            const btn = document.getElementById('pm-btn');
+            btn.disabled = true;
+
+            try {
+                const resp = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        chat_id: uid,
+                        text: `✉️ <b>Сообщение от администрации:</b>\n\n${escapeHtml(text)}`,
+                        parse_mode: "HTML"
+                    })
+                });
+                const res = await resp.json();
+                if (res.ok) {
+                    document.getElementById('pm-text').value = "";
+                    showToast(`✅ Сообщение отправлено пользователю ${uid}!`);
+                } else {
+                    throw new Error(res.description || "Ошибка отправки");
+                }
+            } catch (e) {
+                showToast("Ошибка: " + e.message, true);
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        async function sendQuickWarn(uid) {
+            if (!confirm(`Выдать предупреждение (+1 варн) пользователю ${uid}?`)) return;
+            try {
+                await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        chat_id: uid,
+                        text: `⚠️ <b>Вам выдано предупреждение от администрации!</b> Соблюдайте правила предложки.`,
+                        parse_mode: "HTML"
+                    })
+                });
+                showToast(`⚠️ Варн выдан пользователю ${uid}`);
+            } catch (e) {
+                showToast("Ошибка: " + e.message, true);
             }
         }
     </script>
