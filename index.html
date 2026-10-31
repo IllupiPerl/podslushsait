@@ -199,7 +199,7 @@
 
         let isAdmin = (
             urlParams.get('admin') === '1' ||
-            window.location.hash.startsWith('#data=') ||
+            urlParams.has('data') ||
             ALLOWED_ADMINS.includes(currentUserId)
         );
 
@@ -220,7 +220,7 @@
 
         function enableAdminUI() {
             document.getElementById('admin-tabs').style.display = 'flex';
-            loadAdminDataFromHash();
+            loadAdminData();
         }
 
         function switchTab(tab, btn) {
@@ -230,31 +230,39 @@
             btn.classList.add('active');
         }
 
-        function decodeBase64Url(str) {
-            str = str.replace(/-/g, '+').replace(/_/g, '/');
-            while (str.length % 4) str += '=';
-            return decodeURIComponent(Array.prototype.map.call(atob(str), c =>
-                '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
-            ).join(''));
+        function decodeBase64Utf8(b64) {
+            let clean = b64.split('#')[0].split('&')[0].trim();
+            clean = clean.replace(/-/g, '+').replace(/_/g, '/');
+            while (clean.length % 4) clean += '=';
+            const binString = atob(clean);
+            const bytes = new Uint8Array(binString.length);
+            for (let i = 0; i < binString.length; i++) {
+                bytes[i] = binString.charCodeAt(i);
+            }
+            return new TextDecoder('utf-8').decode(bytes);
         }
 
         function escapeHtml(s) {
             return String(s || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
         }
 
-        function loadAdminDataFromHash() {
-            const hash = window.location.hash;
+        function loadAdminData() {
             const pendingEl = document.getElementById('pending-list');
             const usersEl = document.getElementById('users-list');
 
-            if (!hash.startsWith('#data=')) {
+            let rawB64 = urlParams.get('data');
+            if (!rawB64 && window.location.hash.includes('data=')) {
+                rawB64 = window.location.hash.split('data=')[1];
+            }
+
+            if (!rawB64) {
                 pendingEl.innerHTML = '<div style="font-size:13px; color:var(--hint-color)">Нажмите «🔄 Обновить базу заявок и юзеров» выше, чтобы загрузить данные из бота.</div>';
                 usersEl.innerHTML = '<div style="font-size:13px; color:var(--hint-color)">Нажмите кнопку обновления выше.</div>';
                 return;
             }
 
             try {
-                const rawJson = decodeBase64Url(hash.substring(6));
+                const rawJson = decodeBase64Utf8(rawB64);
                 const data = JSON.parse(rawJson);
                 const posts = data.p || [];
                 const users = data.u || [];
@@ -305,7 +313,7 @@
                     `).join('');
                 }
             } catch (e) {
-                pendingEl.innerHTML = 'Ошибка чтения данных.';
+                pendingEl.innerHTML = '<div style="font-size:13px; color:var(--hint-color)">Нажмите «🔄 Обновить базу заявок и юзеров» выше, чтобы обновить ссылку.</div>';
             }
         }
 
