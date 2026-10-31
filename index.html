@@ -23,9 +23,31 @@
             padding: 14px;
             padding-bottom: 40px;
         }
-        h2 { margin: 0 0 12px 0; font-size: 20px; user-select: none; cursor: pointer; }
+        .header-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+        h2 { margin: 0; font-size: 20px; user-select: none; cursor: pointer; }
         h3 { margin: 0 0 10px 0; font-size: 16px; }
-        
+
+        .api-badge {
+            font-size: 11px;
+            padding: 4px 8px;
+            border-radius: 12px;
+            background: rgba(128, 128, 128, 0.2);
+            color: var(--hint-color);
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            text-decoration: none;
+            border: 1px solid rgba(128, 128, 128, 0.25);
+        }
+        .api-badge.online { color: #10b981; border-color: rgba(16, 185, 129, 0.4); }
+        .api-badge.offline { color: #f59e0b; border-color: rgba(245, 158, 11, 0.4); }
+
         .tabs {
             display: none;
             gap: 8px;
@@ -41,6 +63,7 @@
             font-weight: 600;
             font-size: 14px;
             cursor: pointer;
+            transition: all 0.2s ease;
         }
         .tab-btn.active {
             background: var(--btn-color);
@@ -49,7 +72,7 @@
         }
         .tab-view { display: none; }
         .tab-view.active { display: block; }
-​
+
         .card {
             background: var(--sec-bg);
             border-radius: 14px;
@@ -98,8 +121,10 @@
             font-size: 15px;
             font-weight: 600;
             cursor: pointer;
+            transition: opacity 0.2s ease, transform 0.1s ease;
         }
-        button:disabled { opacity: 0.6; }
+        button:active { transform: scale(0.98); }
+        button:disabled { opacity: 0.6; cursor: default; }
         .btn-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -111,13 +136,14 @@
         .btn-red { background: #ef4444; color: #fff; }
         .btn-orange { background: #f59e0b; color: #fff; }
         .btn-gray { background: #64748b; color: #fff; }
-​
+
         .item-box {
             background: var(--bg-color);
             border-radius: 10px;
             padding: 10px;
             margin-bottom: 10px;
             border: 1px solid rgba(128,128,128,0.15);
+            transition: opacity 0.25s ease, transform 0.25s ease;
         }
         .meta {
             font-size: 12px;
@@ -126,32 +152,67 @@
             justify-content: space-between;
             margin-bottom: 6px;
         }
+
+        /* Плавающее уведомление (Toast) */
+        #toast {
+            position: fixed;
+            top: 14px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-60px);
+            background: #10b981;
+            color: #ffffff;
+            padding: 10px 18px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+            opacity: 0;
+            pointer-events: none;
+            transition: transform 0.25s ease, opacity 0.25s ease;
+            z-index: 99999;
+            max-width: 90%;
+            text-align: center;
+        }
+        #toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+        #toast.error {
+            background: #ef4444;
+        }
     </style>
 </head>
 <body>
-​
-    <h2 onclick="secretTap()">🤫 Подслушка 21 школы</h2>
-​
+
+    <div id="toast">Уведомление</div>
+
+    <div class="header-row">
+        <h2 onclick="secretTap()">🤫 Подслушка 21 школы</h2>
+        <span class="api-badge" id="api-status-badge" onclick="configureApiUrl()" title="Нажмите, чтобы настроить адрес API">
+            ● Подключение...
+        </span>
+    </div>
+
     <div class="tabs" id="admin-tabs">
         <button class="tab-btn active" id="btn-tab-user" onclick="switchTab('user', this)">✍️ Предложка</button>
         <button class="tab-btn" id="btn-tab-admin" onclick="switchTab('admin', this)">🛡️ Админ-панель</button>
     </div>
-​
+
     <!-- ==================== ВКЛАДКА 1: ПРЕДЛОЖКА ==================== -->
     <div id="view-user" class="tab-view active">
         <div class="card">
             <textarea id="post-text" placeholder="Напиши свою историю, сплетню или вопрос..."></textarea>
-​
+
             <label class="file-label">
                 📷 Прикрепить фото / картинку
                 <input type="file" id="photo-input" accept="image/*" style="display:none" onchange="previewFile()">
             </label>
-​
+
             <div id="preview-wrap">
                 <img id="preview" alt="Предпросмотр">
                 <button type="button" class="btn-sm btn-red" style="margin-top:6px;" onclick="clearPhoto()">🗑 Удалить фото</button>
             </div>
-​
+
             <div class="toggle-row">
                 <label for="anon-check">Опубликовать анонимно 🕵️</label>
                 <input type="checkbox" id="anon-check" checked style="transform: scale(1.3);">
@@ -159,26 +220,26 @@
             <button id="submit-btn" onclick="sendPost()">Отправить в предложку</button>
         </div>
     </div>
-​
+
     <!-- ==================== ВКЛАДКА 2: АДМИН-ПАНЕЛЬ ==================== -->
     <div id="view-admin" class="tab-view">
         <div class="card">
-            <button class="btn-sm" style="margin-bottom: 8px;" onclick="syncDatabase()">🔄 Обновить базу заявок и юзеров</button>
+            <button class="btn-sm" id="sync-btn" style="margin-bottom: 8px;" onclick="syncDatabase()">🔄 Обновить базу заявок и юзеров</button>
             <div style="font-size:12px; color:var(--hint-color); text-align:center;">
-                Данные загружаются напрямую из бота. Если список не обновился — нажмите кнопку выше.
+                Данные обновляются онлайн прямо в приложении без закрытия окна!
             </div>
         </div>
-​
+
         <div class="card">
             <h3>📩 Необработанные заявки (<span id="pending-count">0</span>)</h3>
             <div id="pending-list"></div>
         </div>
-​
+
         <div class="card">
             <h3>👥 Все пользователи (<span id="users-count">0</span>)</h3>
             <div id="users-list"></div>
         </div>
-​
+
         <div class="card">
             <h3>✉️ Написать лично / Рассылка</h3>
             <input type="number" id="pm-uid" placeholder="Telegram ID получателя (пусто = рассылка ВСЕМ)">
@@ -186,45 +247,120 @@
             <button onclick="sendAdminMessage()">Отправить сообщение</button>
         </div>
     </div>
-​
+
     <script>
-        const tg = window.Telegram.WebApp;
-        tg.expand();
-​
+        const tg = window.Telegram?.WebApp;
+        if (tg) {
+            tg.ready();
+            tg.expand();
+        }
+
         const ALLOWED_ADMINS = [1389964621];
         const IMGBB_API_KEY = "ВАШ_КЛЮЧ_IMGBB";
-​
-        // Публичный HTTPS-адрес HTTP API бота (main.py: API_HOST/API_PORT, прокинутый наружу).
-        // Например: "https://bot.illupiperl.ru" или "https://xxxx.trycloudflare.com"
-        // Если оставить пустым — приложение работает по-старому (sendData, вкладка закрывается).
-        const API_URL = "";
-​
-        const initData = tg.initData || "";
-        let apiMode = false; // true = работаем через API (вкладка НЕ закрывается)
-​
+
         const urlParams = new URLSearchParams(window.location.search);
-        const currentUserId = tg.initDataUnsafe?.user?.id || 0;
-​
-        // В фоне проверяем, доступен ли API бота
-        const apiReady = (async () => {
-            if (!API_URL || !initData) return;
+        const currentUserId = tg?.initDataUnsafe?.user?.id || 0;
+
+        // ==================== ОПРЕДЕЛЕНИЕ АДРЕСА API БОТА ====================
+        // Чтобы окно Mini App НЕ закрывалось, мы шлем запросы по HTTP (fetch), а не через tg.sendData().
+        // Порядок поиска адреса:
+        // 1. Параметр ?api= в URL (например: ?api=https://my-tunnel.trycloudflare.com)
+        // 2. Ранее сохраненный адрес в браузере (localStorage)
+        // 3. Если сайт запущен на том же сервере/туннеле, что и бот — текущий домен (window.location.origin)
+        let savedApi = localStorage.getItem('school21_api_url') || '';
+        let isGithub = window.location.hostname.includes('github.io');
+        let API_BASE_URL = urlParams.get('api') || savedApi || (isGithub ? '' : window.location.origin);
+        if (API_BASE_URL) API_BASE_URL = API_BASE_URL.replace(/\/+$/, '');
+
+        // Проверка статуса API
+        async function checkApiHealth() {
+            const badge = document.getElementById('api-status-badge');
+            if (!API_BASE_URL && isGithub) {
+                badge.className = 'api-badge offline';
+                badge.innerText = '⚙️ Настроить API';
+                return false;
+            }
             try {
-                const res = await fetch(API_URL + "/api/ping");
-                const json = await res.json();
-                if (json && json.ok) apiMode = true;
-            } catch (e) { apiMode = false; }
-        })();
-​
+                const res = await fetch((API_BASE_URL || '') + '/api/ping', {
+                    headers: { 'X-Telegram-Init-Data': tg?.initData || '' }
+                });
+                const j = await res.json();
+                if (j.ok) {
+                    badge.className = 'api-badge online';
+                    badge.innerText = '● Онлайн';
+                    return true;
+                }
+            } catch (e) {
+                badge.className = 'api-badge offline';
+                badge.innerText = '● Офлайн';
+                return false;
+            }
+        }
+
+        function configureApiUrl() {
+            const current = API_BASE_URL || (isGithub ? 'https://...' : window.location.origin);
+            const promptVal = prompt("Введите публичный HTTPS-адрес сервера бота (например из ngrok или Cloudflare Tunnel):
+
+Оставьте пустым для автоопределения:", API_BASE_URL);
+            if (promptVal !== null) {
+                API_BASE_URL = promptVal.trim().replace(/\/+$/, '');
+                localStorage.setItem('school21_api_url', API_BASE_URL);
+                showToast("Адрес API сохранен: " + (API_BASE_URL || "Авто"));
+                checkApiHealth();
+            }
+        }
+
+        // ==================== ВСПЛЫВАЮЩИЕ УВЕДОМЛЕНИЯ ====================
+        let toastTimer = null;
+        function showToast(text, isError = false) {
+            const el = document.getElementById('toast');
+            el.innerText = text;
+            el.className = isError ? 'show error' : 'show';
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => {
+                el.className = '';
+            }, 2600);
+        }
+
+        // ==================== API ЗАПРОСЫ ====================
+        async function apiCall(endpoint, method = 'POST', body = null) {
+            const url = (API_BASE_URL || '') + endpoint;
+            const headers = {
+                'Content-Type': 'application/json',
+                'X-Telegram-Init-Data': tg?.initData || '',
+                'X-Init-Data': tg?.initData || '',
+                'X-Admin-Secret': 'school21admin'
+            };
+
+            let resp;
+            try {
+                resp = await fetch(url, {
+                    method: method,
+                    headers: headers,
+                    body: body ? JSON.stringify(body) : undefined
+                });
+            } catch (networkError) {
+                throw new Error("Не удалось подключиться к серверу бота. Проверьте, что бот запущен!");
+            }
+
+            const data = await resp.json().catch(() => ({}));
+            if (!resp.ok || data.ok === false) {
+                throw new Error(data.error || ("Ошибка " + resp.status));
+            }
+            return data;
+        }
+
+        // ==================== АДМИНКА ====================
         let isAdmin = (
             urlParams.get('admin') === '1' ||
             urlParams.has('data') ||
             ALLOWED_ADMINS.includes(currentUserId)
         );
-​
+
         if (isAdmin) {
             enableAdminUI();
         }
-​
+
         let tapCount = 0;
         function secretTap() {
             tapCount++;
@@ -233,21 +369,22 @@
                 enableAdminUI();
                 switchTab('admin', document.getElementById('btn-tab-admin'));
                 tapCount = 0;
+                showToast("🛡️ Режим администратора активирован!");
             }
         }
-​
+
         function enableAdminUI() {
             document.getElementById('admin-tabs').style.display = 'flex';
-            refreshAdminData();
+            loadAdminData();
         }
-​
+
         function switchTab(tab, btn) {
             document.querySelectorAll('.tab-view').forEach(el => el.classList.remove('active'));
             document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
             document.getElementById('view-' + tab).classList.add('active');
             btn.classList.add('active');
         }
-​
+
         function decodeBase64Utf8(b64) {
             let clean = b64.split('#')[0].split('&')[0].trim();
             clean = clean.replace(/-/g, '+').replace(/_/g, '/');
@@ -259,60 +396,26 @@
             }
             return new TextDecoder('utf-8').decode(bytes);
         }
-​
+
         function escapeHtml(s) {
-            return String(s || "").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+            return String(s || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
         }
-​
-        // ============ РАБОТА С API БОТА (fetch — вкладка НЕ закрывается) ============
-​
-        async function apiFetch(path, body, method) {
-            const opts = {
-                method: method || (body ? "POST" : "GET"),
-                headers: { "X-Init-Data": initData }
-            };
-            if (body) {
-                opts.headers["Content-Type"] = "application/json";
-                opts.body = JSON.stringify(body);
-            }
-            const res = await fetch(API_URL + path, opts);
-            const json = await res.json().catch(() => null);
-            return { status: res.status, json };
-        }
-​
-        function haptic(type) {
-            try { tg.HapticFeedback.notificationOccurred(type || 'success'); } catch (e) {}
-        }
-​
-        // Загружает и рисует данные админ-панели (через API или фолбэком из URL)
-        async function refreshAdminData() {
-            await apiReady;
-            if (apiMode) {
-                try {
-                    const { status, json } = await apiFetch("/api/data");
-                    if (status === 403) return; // не админ
-                    if (json && json.ok) { renderAdminData(json.data); return; }
-                } catch (e) { /* сервер недоступен — фолбэк ниже */ }
-            }
-            loadAdminDataFromUrl();
-        }
-​
+
         function renderAdminData(data) {
             const pendingEl = document.getElementById('pending-list');
             const usersEl = document.getElementById('users-list');
-            if (!data) return;
-​
+
             const posts = data.p || [];
             const users = data.u || [];
-​
+
             document.getElementById('pending-count').innerText = posts.length;
             document.getElementById('users-count').innerText = users.length;
-​
+
             if (posts.length === 0) {
                 pendingEl.innerHTML = '<div style="font-size:13px; color:var(--hint-color)">Необработанных заявок нет! 🎉</div>';
             } else {
                 pendingEl.innerHTML = posts.map(p => `
-                    <div class="item-box">
+                    <div class="item-box" id="post-card-${p.id}">
                         <div class="meta">
                             <span><b>#${p.id}</b> от ${escapeHtml(p.un)} (<code>${p.uid}</code>)</span>
                             <span>${p.a ? '🕵️ Анон' : '✍️ Публично'} ${p.ph ? '🖼 Фото' : ''}</span>
@@ -327,12 +430,12 @@
                     </div>
                 `).join('');
             }
-​
+
             if (users.length === 0) {
                 usersEl.innerHTML = '<div style="font-size:13px; color:var(--hint-color)">Пользователей в базе пока нет.</div>';
             } else {
                 usersEl.innerHTML = users.map(u => `
-                    <div class="item-box">
+                    <div class="item-box" id="user-card-${u.id}">
                         <div class="meta">
                             <span><b>${escapeHtml(u.fn)}</b> ${u.un ? '(@' + escapeHtml(u.un) + ')' : ''}</span>
                             <span>ID: <code>${u.id}</code></span>
@@ -342,100 +445,129 @@
                         </div>
                         <div class="btn-grid">
                             <button class="btn-sm btn-orange" onclick="modUser(${u.id}, 'warn')">⚠️ Выдать варн</button>
-                            ${u.b ? `<button class="btn-sm btn-green" onclick="modUser(${u.id}, 'unban')">✅ Разбанить</button>` : `<button class="btn-sm btn-red" onclick="modUser(${u.id}, 'ban')">🚫 Забанить</button>`}
+                            ${u.b 
+                                ? `<button class="btn-sm btn-green" onclick="modUser(${u.id}, 'unban')">✅ Разбанить</button>`
+                                : `<button class="btn-sm btn-red" onclick="modUser(${u.id}, 'ban')">🚫 Забанить</button>`
+                            }
                         </div>
                     </div>
                 `).join('');
             }
         }
-​
-        // Фолбэк: старый способ — данные, упакованные ботом в ссылку
-        function loadAdminDataFromUrl() {
+
+        async function loadAdminData() {
+            // 1. Быстрый показ из параметров URL (если есть data=)
             let rawB64 = urlParams.get('data');
             if (!rawB64 && window.location.hash.includes('data=')) {
                 rawB64 = window.location.hash.split('data=')[1];
             }
-            if (!rawB64) {
-                document.getElementById('pending-list').innerHTML = '<div style="font-size:13px; color:var(--hint-color)">Не удалось загрузить данные из API. Нажмите «🔄 Обновить» — бот пришлёт новую ссылку.</div>';
-                document.getElementById('users-list').innerHTML = '<div style="font-size:13px; color:var(--hint-color)">Нажмите кнопку обновления выше.</div>';
-                return;
+            if (rawB64) {
+                try {
+                    const data = JSON.parse(decodeBase64Utf8(rawB64));
+                    renderAdminData(data);
+                } catch (e) {
+                    console.error("Ошибка парсинга data:", e);
+                }
             }
+
+            // 2. В фоновом режиме загружаем актуальные данные из API (чтобы не требовался перезапуск)
             try {
-                renderAdminData(JSON.parse(decodeBase64Utf8(rawB64)));
+                const res = await apiCall('/api/data', 'GET');
+                if (res && res.data) {
+                    renderAdminData(res.data);
+                }
             } catch (e) {
-                document.getElementById('pending-list').innerHTML = '<div style="font-size:13px; color:var(--hint-color)">Не удалось загрузить данные. Нажмите «🔄 Обновить» — бот пришлёт новую ссылку.</div>';
+                if (!rawB64) {
+                    document.getElementById('pending-list').innerHTML = '<div style="font-size:13px; color:var(--hint-color)">Нажмите «🔄 Обновить базу заявок и юзеров» выше.</div>';
+                    document.getElementById('users-list').innerHTML = '<div style="font-size:13px; color:var(--hint-color)">Нажмите кнопку обновления выше.</div>';
+                }
             }
         }
-​
-        // Кнопка «Обновить»: через API остаёмся в приложении, иначе фолбэк на sendData
+
+        // ==================== ДЕЙСТВИЯ (БЕЗ ЗАКРЫТИЯ ОКНА) ====================
         async function syncDatabase() {
-            await apiReady;
-            if (apiMode) {
-                try {
-                    await refreshAdminData();
-                    haptic('success');
-                    return;
-                } catch (e) { /* фолбэк ниже */ }
+            const btn = document.getElementById('sync-btn');
+            if (btn) btn.innerText = "🔄 Загрузка данных...";
+            try {
+                const res = await apiCall('/api/data', 'GET');
+                if (res && res.data) {
+                    renderAdminData(res.data);
+                    showToast("✅ База данных обновлена!");
+                }
+            } catch (e) {
+                showToast(e.message, true);
+                if (tg) tg.showAlert("Ошибка связи с ботом: " + e.message);
+            } finally {
+                if (btn) btn.innerText = "🔄 Обновить базу заявок и юзеров";
             }
-            tg.sendData(JSON.stringify({ action: "sync" }));
         }
-​
+
         async function modPost(postId, subAction) {
-            if (apiMode) {
-                try {
-                    const { json } = await apiFetch("/api/mod_post", { post_id: postId, sub_action: subAction });
-                    if (json && json.ok) {
-                        haptic('success');
-                        if (json.data) renderAdminData(json.data);
-                        return;
-                    }
-                    haptic('error');
-                    return tg.showAlert((json && json.error) || "Ошибка выполнения действия.");
-                } catch (e) { /* сервер недоступен — фолбэк ниже */ }
+            try {
+                const res = await apiCall('/api/mod_post', 'POST', { post_id: postId, sub_action: subAction });
+                showToast(res.msg || "Заявка обработана!");
+
+                // Анимация исчезновения карточки из списка
+                const el = document.getElementById('post-card-' + postId);
+                if (el) {
+                    el.style.opacity = '0';
+                    el.style.transform = 'scale(0.95)';
+                    setTimeout(() => {
+                        el.remove();
+                        const countEl = document.getElementById('pending-count');
+                        let count = parseInt(countEl.innerText) || 1;
+                        count = Math.max(0, count - 1);
+                        countEl.innerText = count;
+                        if (count === 0) {
+                            document.getElementById('pending-list').innerHTML = '<div style="font-size:13px; color:var(--hint-color)">Необработанных заявок нет! 🎉</div>';
+                        }
+                    }, 250);
+                }
+
+                if (res.data) renderAdminData(res.data);
+            } catch (e) {
+                showToast(e.message, true);
+                if (tg) tg.showAlert("Ошибка: " + e.message);
             }
-            tg.sendData(JSON.stringify({ action: "mod_post", post_id: postId, sub_action: subAction }));
         }
-​
+
         async function modUser(targetId, subAction) {
-            if (apiMode) {
-                try {
-                    const { json } = await apiFetch("/api/mod_user", { target_id: targetId, sub_action: subAction });
-                    if (json && json.ok) {
-                        haptic('success');
-                        if (json.data) renderAdminData(json.data);
-                        return;
-                    }
-                    haptic('error');
-                    return tg.showAlert((json && json.error) || "Ошибка выполнения действия.");
-                } catch (e) { /* сервер недоступен — фолбэк ниже */ }
+            try {
+                const res = await apiCall('/api/mod_user', 'POST', { target_id: targetId, sub_action: subAction });
+                showToast(res.msg || "Пользователь обновлен!");
+                if (res.data) {
+                    renderAdminData(res.data);
+                } else {
+                    syncDatabase();
+                }
+            } catch (e) {
+                showToast(e.message, true);
+                if (tg) tg.showAlert("Ошибка: " + e.message);
             }
-            tg.sendData(JSON.stringify({ action: "mod_user", target_id: targetId, sub_action: subAction }));
         }
-​
+
         async function sendAdminMessage() {
             const uid = document.getElementById('pm-uid').value.trim();
             const text = document.getElementById('bc-text').value.trim();
-            if (!text) return tg.showAlert("Введите текст сообщения!");
-​
-            if (apiMode) {
-                try {
-                    const path = uid ? "/api/pm" : "/api/broadcast";
-                    const body = uid ? { target_id: parseInt(uid), text } : { text };
-                    const { json } = await apiFetch(path, body);
-                    if (json && json.ok) {
-                        haptic('success');
-                        document.getElementById('bc-text').value = "";
-                        return tg.showAlert(json.msg || "✅ Отправлено!");
-                    }
-                    haptic('error');
-                    return tg.showAlert((json && json.error) || "Ошибка отправки.");
-                } catch (e) { /* сервер недоступен — фолбэк ниже */ }
+            if (!text) return tg ? tg.showAlert("Введите текст сообщения!") : alert("Введите текст сообщения!");
+
+            try {
+                if (uid) {
+                    const res = await apiCall('/api/pm', 'POST', { target_id: parseInt(uid), text: text });
+                    showToast(res.msg || "✅ Личное сообщение отправлено!");
+                    if (tg) tg.showAlert(res.msg || "✅ Отправлено!");
+                } else {
+                    const res = await apiCall('/api/broadcast', 'POST', { text: text });
+                    showToast(res.msg || "✅ Рассылка завершена!");
+                    if (tg) tg.showAlert(res.msg || "✅ Рассылка завершена!");
+                }
+                document.getElementById('bc-text').value = "";
+            } catch (e) {
+                showToast(e.message, true);
+                if (tg) tg.showAlert("Ошибка: " + e.message);
             }
-            tg.sendData(JSON.stringify(uid
-                ? { action: "pm", target_id: parseInt(uid), text }
-                : { action: "broadcast", text }));
         }
-​
+
         function previewFile() {
             const file = document.getElementById('photo-input').files[0];
             if (file) {
@@ -443,25 +575,25 @@
                 document.getElementById('preview-wrap').style.display = 'block';
             }
         }
-​
+
         function clearPhoto() {
             document.getElementById('photo-input').value = "";
             document.getElementById('preview-wrap').style.display = 'none';
         }
-​
+
         async function sendPost() {
             const text = document.getElementById('post-text').value.trim();
             const isAnon = document.getElementById('anon-check').checked;
             const file = document.getElementById('photo-input').files[0];
-​
+
             if (!text && !file) {
-                return tg.showAlert("Напишите текст или прикрепите фотографию!");
+                return tg ? tg.showAlert("Напишите текст или прикрепите фотографию!") : alert("Напишите текст или прикрепите фото!");
             }
-​
+
             const btn = document.getElementById('submit-btn');
             btn.disabled = true;
             btn.innerText = "Отправка...";
-​
+
             let photoUrl = null;
             if (file) {
                 const formData = new FormData();
@@ -477,43 +609,52 @@
                     } else {
                         btn.disabled = false;
                         btn.innerText = "Отправить в предложку";
-                        return tg.showAlert("Ошибка загрузки фото: проверьте IMGBB_API_KEY!");
+                        return tg ? tg.showAlert("Ошибка загрузки фото: проверьте IMGBB_API_KEY!") : alert("Ошибка загрузки фото!");
                     }
                 } catch (e) {
                     btn.disabled = false;
                     btn.innerText = "Отправить в предложку";
-                    return tg.showAlert("Ошибка сети при загрузке картинки.");
+                    return tg ? tg.showAlert("Ошибка сети при загрузке картинки.") : alert("Ошибка сети при загрузке картинки.");
                 }
             }
-​
-            // Через API приложение остаётся открытым
-            if (apiMode) {
-                try {
-                    const { json } = await apiFetch("/api/submit", {
-                        text: text, is_anon: isAnon, photo_url: photoUrl
-                    });
-                    btn.disabled = false;
-                    btn.innerText = "Отправить в предложку";
-                    if (json && json.ok) {
-                        haptic('success');
-                        document.getElementById('post-text').value = "";
-                        clearPhoto();
-                        return tg.showAlert(json.msg || "✅ Заявка отправлена!");
-                    }
-                    haptic('error');
-                    return tg.showAlert((json && json.msg) || "Ошибка отправки.");
-                } catch (e) {
-                    // Сервер недоступен — фолбэк на sendData (вкладка закроется, как раньше)
+
+            try {
+                const payload = {
+                    text: text,
+                    is_anon: isAnon,
+                    photo_url: photoUrl,
+                    user_id: currentUserId,
+                    username: tg?.initDataUnsafe?.user?.username || "",
+                    full_name: (tg?.initDataUnsafe?.user?.first_name || "") + " " + (tg?.initDataUnsafe?.user?.last_name || "")
+                };
+
+                const res = await apiCall('/api/submit', 'POST', payload);
+                document.getElementById('post-text').value = "";
+                clearPhoto();
+                showToast("✅ Заявка отправлена модераторам!");
+                if (tg) {
+                    tg.showAlert(res.msg || "✅ Ваша заявка успешно отправлена на модерацию!");
                 }
+            } catch (e) {
+                // Если сервер недоступен, предлагаем резервную отправку через Telegram-сообщение (которое закроет окно)
+                const useFallback = confirm("Сервер бота недоступен по сети (" + e.message + ").\n\nОтправить заявку через прямое Telegram-сообщение?\n(Внимание: при отправке через Telegram клиент закроет окно приложения).");
+                if (useFallback && tg) {
+                    tg.sendData(JSON.stringify({
+                        action: "submit",
+                        text: text,
+                        is_anon: isAnon,
+                        photo_url: photoUrl
+                    }));
+                    return;
+                }
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "Отправить в предложку";
             }
-​
-            tg.sendData(JSON.stringify({
-                action: "submit",
-                text: text,
-                is_anon: isAnon,
-                photo_url: photoUrl
-            }));
         }
+
+        // Запуск проверки связи с сервером
+        checkApiHealth();
     </script>
 </body>
 </html>
